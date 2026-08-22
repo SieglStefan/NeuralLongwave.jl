@@ -36,19 +36,21 @@ experiments = [
 
 
 
-    ### width = 4, seed = 1000
+    ### MLP, n_hidden=2, width=32, seed = 1000
     # 2. Skill
-    (;  name            = "RNN_w4_s1000_skill",
-        scheme          = "RNN_w4_s1000",
+    (;  name            = "MLP_s1000_skill",
+        scheme          = "MLP_s1000",
         reference       = REF,
         SKILL...
     ),
     # 3. Stability
-    (;  name            = "RNN_w4_s1000_stab",
-        scheme          = "RNN_w4_s1000",
+    (;  name            = "MLP_s1000_stab",
+        scheme          = "MLP_s1000",
         reference       = REF,
         STAB...
     ),
+
+
 
     ### width = 8, seed = 1000
     # 4. Skill
@@ -92,30 +94,60 @@ experiments = [
         STAB...
     ),
 
-
-
-    ### width = 4, seed = 2000
+    ### width = 64, seed = 1000
     # 10. Skill
-    (;  name            = "RNN_w4_s2000_skill",
-        scheme          = "RNN_w4_s2000",
+    (;  name            = "RNN_w64_s1000_skill",
+        scheme          = "RNN_w64_s1000",
         reference       = REF,
         SKILL...
     ),
     # 11. Stability
-    (;  name            = "RNN_w4_s2000_stab",
-        scheme          = "RNN_w4_s2000",
+    (;  name            = "RNN_w64_s1000_stab",
+        scheme          = "RNN_w64_s1000",
         reference       = REF,
         STAB...
     ),
 
-    ### width = 8, seed = 2000
+    ### width = 128, seed = 1000
     # 12. Skill
+    (;  name            = "RNN_w128_s1000_skill",
+        scheme          = "RNN_w128_s1000",
+        reference       = REF,
+        SKILL...
+    ),
+    # 13. Stability
+    (;  name            = "RNN_w128_s1000_stab",
+        scheme          = "RNN_w128_s1000",
+        reference       = REF,
+        STAB...
+    ),
+
+
+
+    ### MLP, n_hidden=2, width=32, seed = 2000
+    # 14. Skill
+    (;  name            = "MLP_s2000_skill",
+        scheme          = "MLP_s2000",
+        reference       = REF,
+        SKILL...
+    ),
+    # 15. Stability
+    (;  name            = "MLP_s2000_stab",
+        scheme          = "MLP_s2000",
+        reference       = REF,
+        STAB...
+    ),
+
+
+
+    ### width = 8, seed = 2000
+    # 16. Skill
     (;  name            = "RNN_w8_s2000_skill",
         scheme          = "RNN_w8_s2000",
         reference       = REF,
         SKILL...
     ),
-    # 13. Stability
+    # 17. Stability
     (;  name            = "RNN_w8_s2000_stab",
         scheme          = "RNN_w8_s2000",
         reference       = REF,
@@ -123,13 +155,13 @@ experiments = [
     ),
 
     ### width = 16, seed = 2000
-    # 14. Skill
+    # 18. Skill
     (;  name            = "RNN_w16_s2000_skill",
         scheme          = "RNN_w16_s2000",
         reference       = REF,
         SKILL...
     ),
-    # 15. Stability
+    # 19. Stability
     (;  name            = "RNN_w16_s2000_stab",
         scheme          = "RNN_w16_s2000",
         reference       = REF,
@@ -137,15 +169,43 @@ experiments = [
     ),
 
     ### width = 32, seed = 2000
-    # 16. Skill
+    # 20. Skill
     (;  name            = "RNN_w32_s2000_skill",
         scheme          = "RNN_w32_s2000",
         reference       = REF,
         SKILL...
     ),
-    # 17. Stability
+    # 21. Stability
     (;  name            = "RNN_w32_s2000_stab",
         scheme          = "RNN_w32_s2000",
+        reference       = REF,
+        STAB...
+    ),
+
+    ### width = 64, seed = 2000
+    # 22. Skill
+    (;  name            = "RNN_w64_s2000_skill",
+        scheme          = "RNN_w64_s2000",
+        reference       = REF,
+        SKILL...
+    ),
+    # 23. Stability
+    (;  name            = "RNN_w64_s2000_stab",
+        scheme          = "RNN_w64_s2000",
+        reference       = REF,
+        STAB...
+    ),
+
+    ### width = 128, seed = 2000
+    # 24. Skill
+    (;  name            = "RNN_w128_s2000_skill",
+        scheme          = "RNN_w128_s2000",
+        reference       = REF,
+        SKILL...
+    ),
+    # 25. Stability
+    (;  name            = "RNN_w128_s2000_stab",
+        scheme          = "RNN_w128_s2000",
         reference       = REF,
         STAB...
     ),
