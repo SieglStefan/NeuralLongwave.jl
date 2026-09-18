@@ -4,6 +4,10 @@
 
 
 
+
+
+### Transformations
+
 # Calculate the z-score transformation of x
 @inline zscore(x, μ, σ) = (x .- μ) ./ σ
 
@@ -12,71 +16,89 @@
 
 
 
+
+
+
+
+
+
+
+### Struct Definition
+
 # Struct holding zscore parameters
 struct ZScoreStats{VI,VO,C}
-    input_mean::VI          # input means
+    input_mean::VI          # input means, in the order of the scheme's input spec
     input_std::VI           # input stds
 
-    output_mean::VO         # output means
+    output_mean::VO         # output means, in the order decode expects
     output_std::VO          # output stds
-
     center::C               # predictor center of the output form
 
     zscore_name::String     # name of the stats file
 end
 
-
 # Convenience constructor loading pre-calculated stats
-function ZScoreStats(zscore_name::String, input_spec, output_form, nlayers)
+function ZScoreStats(zscore_scheme::String, zscore_unit::String, input_spec, output_form)
 
     # Load zscore stats
-    data = load_zscore(zscore_name)
+    data = load(; dir=zscore_dir(zscore_scheme, zscore_unit), file="zscore.jld2")
 
-    # Reject stats generated at a different vertical resolution
-    if hasproperty(data, :nlayers) && data.nlayers != nlayers
-        error("Stats in $zscore_name were generated for nlayers=$(data.nlayers), but the scheme expects $nlayers.")
-    end
 
-    # Assemble input stats data.inputs in the order of the scheme's input spec
-    input_mean, input_std = collect_stats(data.inputs, keys(input_spec), zscore_name, "input")
+    # Collect input mean and std in the order of input_spec
+    input_mean, input_std = collect_zscore(data.fields, keys(input_spec))
 
-    # Assemble output stats in the order decode expects
-    group = output_group(output_form)
-    group_data = getproperty(data, group)
-    output_mean, output_std = collect_stats(group_data, output_keys(output_form), zscore_name, "output")
 
-    # Assemle predictor center for the output form
-    center = output_center(output_form, group_data, nlayers)
+    # Collect output mean and std in the order decode expects
+    group = data[output_group(output_form)]
+    output_mean, output_std = collect_zscore(group, output_keys(output_form))
 
-    return ZScoreStats(input_mean, input_std, output_mean, output_std, center, zscore_name)
+    # Collect predictor center of the output form
+    center = collect_center(group)
+
+
+    return ZScoreStats(input_mean, input_std, output_mean, output_std, center, "$(zscore_scheme)_$(zscore_unit)")
 end
 
 
 
-# Load zscore stats from stats_dir
-load_zscore(name) = load(; dir=stats_dir(name), file="stats.jld2")
 
 
 
-# Concatenate the mean/std of input or output in the order of names_io
-function collect_stats(data_io, names_io, zscore_name, io_type)
 
-    # Prepare container
+
+
+
+### Collect zscore stats
+
+# Collects zscore mean and std from a given group for a list of names
+function collect_zscore(group, names)
+
+    # Prepare mean and std containers
     mean = Float32[]
     std  = Float32[]
 
     # Collect mean/std for each var in names
-    for var in names_io
+    for var in names
 
         # Throw error if var is not represented in the stats file
-        if !haskey(data_io, var)
-            error("Stats in $zscore_name have no $io_type entry :$var. Available: $(keys(data_io)).")
+        if !haskey(group, var)
+            error("Zscore stats have no $var entry! Available: $(keys(group)).")
         end
 
-        # Collect
-        append!(mean, Float32.(data_io[var].mean))
-        append!(std,  Float32.(data_io[var].std))
+        # Append mean and std container
+        append!(mean, Float32.(group[var].mean))
+        append!(std,  Float32.(group[var].std))
     end
 
     return mean, std
+end
+
+# Collects center of predictors
+function collect_center(group)
+
+    # Check if group has a :center entry
+    haskey(group, :center) || return nothing
+
+    # Return center of predictors
+    return (; T = Float32.(group.center.T))
 end

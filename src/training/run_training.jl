@@ -1,33 +1,32 @@
-### Function for starting a training
+### Training Run
 ###
-### Mainly wraps training_online!() and possibly training_offline!() in the future
+### Starts an offline or online training run depending on the config type (TrainConfigOffline or TrainConfigOnline)
+
+
 
 
 
 # Run a training for a longwave parameterization scheme
 function run_training(
-    spectral_grid,                      # spectral_grid of the model         
-    lw_train,                           # longwave parameterization scheme to train 
-    train_config,                       # train configuration (TrainConfig)
+    spectral_grid,          # spectral_grid of the model
+    emulator,               # longwave parameterization scheme to be trained
+    train_config,           # train configuration (TrainConfigOffline or TrainConfigOnline)
 )
 
-
-    # Run offline optimization loop
-    # - not implemented yet
-
-
-    # Run online optimization loop
-    lw_trained = training_online(;
-        spectral_grid,
-        lw_train,
-        tc = train_config,
-    )
+    # Run the optimization loop of the configured training mode
+    emulator_trained = train(spectral_grid, emulator, train_config)
 
 
-    # Save scheme after training
-    save(lw_trained; dir=train_config.dir, file="scheme.jld2")
-    @info "Scheme $(train_config.name) stored at $(train_config.dir)!"
+    # Save emulator after training
+    save(emulator_trained; dir=train_config.dir, file="emulator.jld2")
+    @info "Emulator $(train_config.unit) stored at $(train_config.dir)!"
 
 
-    return lw_trained
+    return emulator_trained
 end
+
+
+
+# Training mode, selected by the config type
+train(sg, emulator, tc::TrainConfigOnline)  = training_online(;  spectral_grid=sg, emulator, tc)
+train(sg, emulator, tc::TrainConfigOffline) = training_offline(; spectral_grid=sg, emulator, tc)

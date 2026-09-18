@@ -1,13 +1,33 @@
-# Local scratch / experiments, not part of the repo
-.claude/
-results_OLD/
-results_OLD_2/
-results_OUTDATED/
-sandbox/
-slurm_logs/
-commands_hpc.toml
-sync.sh
+# Folders/files NOT synchronized with GitHub
+#
+# GitHub Repository should stay below ~1 GB
 
-# Reference data is 10+ GB - synced via rsync, not git
-data/reference/*
-!data/reference/README.toml
+
+
+# Old elements kept for lookups
+/_OLD/
+
+# Claude working folder
+/.claude/
+
+# Data: everything except the z-score statistics
+/data/*
+!/data/zscore/
+
+# Sandbox area used for small simple code tests
+/sandbox/
+
+# Run outputs (~4 GB), too big for GitHub
+/results/
+
+# HPC slurm output logs
+/slurm_logs/
+
+# List of useful commands for HPC
+/commands_hpc.toml
+
+# Program for uploading and downloading data and results to/from HPC
+/sync.sh
+
+# File for temporary notes
+/temp.toml

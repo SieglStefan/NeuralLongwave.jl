@@ -1,8 +1,21 @@
 ### Multi Layer Perceptron architecture
 ###
 ### Defining struct and helper setup function
+###         - 1) Configuration
+###         - 2) Layer
+###         - 3) Forward pass
+###         - 4) Setup
 
 
+
+
+
+
+
+
+
+
+### 1) Configuration
 
 # MLP configuration struct
 @kwdef struct MLPConfig{A} <: AbstractArchConfig
@@ -13,13 +26,30 @@
 end
 
 
+# Define info data for a MLP neural network architecture
+info_arch(c::MLPConfig) = (; n_hidden=c.n_hidden, width=c.width, act=string(c.act))
+
+
+
+
+
+### 2) Layer (none here, only plain Lux.Chain)
+
+### 3) Forward pass (none here, only Lux.Chain's own forward pass)
+
+
+
+
+
+### 4) Setup
+
 # Setting up MLP architecture
 function setup_arch(
     arch_config::MLPConfig,
     n_in::Int,
     n_out::Int,
     rng = Random.default_rng();
-    kwargs...,                  # ignored — only the RNN needs input_spec / nlayers
+    kwargs...,                  # ignored: only the RNN needs input_spec / nlayers
 )
 
     # Extract nn architecture parameters
@@ -42,7 +72,3 @@ function setup_arch(
 
     return nn, ps, st
 end
-
-
-# Define info data for a MLP neural network architecture
-info_arch(c::MLPConfig) = (; n_hidden=c.n_hidden, width=c.width, act=string(c.act))

@@ -2,35 +2,44 @@
 ###
 ### Algorithm:
 ###     
+###     - Setup RNG
 ###     - Setup optimiser and simulations
 ###             - template: sim used for copying before perturbation
 ###             - target:   sim used as target for gradient computation
-###             - train:    sim of to be trained lw scheme
-###     - Prepare containers and logging/saving 
+###             - train:    sim of to be trained LW emulator
+###     - Prepare logging/saving 
+###     - Shuffle initial conditions (shuffling of starting seasons)
 ###
 ###     - Loop over initial conditions: n_ic
-###         - Copy sim_template and perturb it:             sim_pert
-###         - Spinup sim_pert
-###         - Copy sim_pert for reference:                  sim_ref
+###         - Sample start date from shuffled initial conditions
+###         - Prepare reference simulation sim_ref (copy, perturb and spinup)
 ###
-###         - Loop over trajectories: n_traj
-###             - Copy sim_ref onto sim_target and sim_train
-###             - Propagate sim_target and sim_train for n_steps
-###             - Calculate loss and gradients
-###             - Accumulate gradients over batch window
-###             - (Update optimiser and scheme after batch window)
-###             - Store training data
-###             - Propagate sim_ref for n_gap steps
+###         - Loop over updates: n_updates
+###
+###             - Loop over gradient accumulation steps: n_accum
+###                 - Copy sim_ref onto sim_target and sim_train
+###                 - Compute gradients over a n_seg timesteps long trajectory
+###                 - Accumulate gradient
+###                 - Compute and log metrics
+###                 - Propagagate sim_ref for n_seg + n_gap timesteps
+###
+###             - Calculate mean of accumulated gradients
+###             - Update emulator and simulation after accumulation window
 ###
 ###         - Update learning rate
+###
+###     - Save training plots
+###     - Return final trained emulator
+
+
 
 
 
 # Function for running a online training
 function training_online(;
     spectral_grid,      # spectral_grid of the model     
-    lw_train,           # longwave parameterization scheme to train
-    tc,                 # run configuration (TrainConfig)
+    emulator,           # longwave parameterization emulator to be trained
+    tc,                 # run configuration (TrainConfigOnline)
 )
 
     # Set seed for reproducability
@@ -38,15 +47,20 @@ function training_online(;
 
 
     # Setup optimiser
-    opt_state, eta = setup_optimiser(tc, ps=lw_train.ps)
+    opt_state, eta = setup_optimiser(tc, ps=emulator.ps)
 
     # Setup simulations (template, training and target)
-    sims = setup_simulations(spectral_grid, tc, lw_train)
+    sims = setup_simulations(spectral_grid, tc, emulator)
 
 
     # Initalize .csv file for logging
-    metric_keys = keys(compute_metrics(lw_train, tc, sims, make_zero(lw_train.ps)))
-    csv_init(metric_keys; dir=tc.dir, file="training.csv")
+    metric_keys = keys(compute_metrics(
+        residuals_online(sims.emulator.variables, sims.target.variables), 
+        tc.loss_config, 
+        emulator, 
+        make_zero(emulator.ps))
+    )
+    csv_init((:ic, :update, :accum, :n_seg, :eta), metric_keys; dir=tc.dir, file="training.csv")
 
     # Initialize folder for training plots
     mkpath(joinpath(tc.dir, "train_plots"))
@@ -56,113 +70,93 @@ function training_online(;
     bin_order = randperm(tc.n_ic)
 
 
-    # Print training start information
-    @info "Online training started!"
+    # Print training config
+    print_config(tc, sims.template.model.time_stepping.Δt)
 
     if !tc.do_autodiff
         @warn "Autodiff is deactivated! Enzyme.autodiff is NOT used!"
     end
 
-    print_config(tc, sims.template.model.time_stepping.Δt)
+    # Print training start information
+    @info "Online training started!"
 
-    
+
 
     ### Main training loop
-    # Loop over initial conditions
+    ### Loop over initial conditions
     for ic in 1:tc.n_ic
 
         # Update number of steps used for calculating gradients
-        n_steps = tc.n_steps_0 + (ic-1) * tc.n_steps_inc
+        n_seg = tc.n_seg_0 + (ic-1) * tc.n_seg_inc
 
         # Draw a starting date
-        start_date = sample_start_date(bin_order[ic], tc.n_ic; start=tc.start_date) - tc.t_spinup
+        restart = pick_restart_state(tc.restart_scheme, tc.restart_unit, bin_order[ic], tc.n_ic, tc.restart_ics, tc.restart_js)
     
-        # Prepare reference simulation 
-        sim_ref = prepare_reference(sims.template, tc, n_steps, start_date)
-
-
-        # Declare gradient sum and update flag for training step
-        grad_sum = nothing
-        do_update = false
+        # Prepare reference simulation (perturbation and spinup)
+        sim_ref = prepare_reference(sims.template, tc, n_seg, restart)
 
 
 
-        # Loop over trajectory segments
-        for traj in 1:tc.n_traj
+        ### Loop over emulator updates
+        for update in 1:tc.n_updates
 
-            # Copy reference variables
-            vars0 = deepcopy(sim_ref.variables) 
-
-            # Set target variables to reference variables
-            copy!(sims.target.variables, vars0)
-            # Force reinitialization
-            force_reinitialize!(sims.target)
-            # Propagate target simulation for gradient computation
-            sim_timesteps!(sims.target, n_steps)
-
-            # Set training variables to reference variables
-            copy!(sims.train.variables, vars0)
-            # Force reinitialization
-            force_reinitialize!(sims.train)
-            # Propagate training simulation for gradient computation
-            sim_timesteps!(sims.train, n_steps)
-
-
-            # Update flag for training step
-            if traj % tc.n_batch == 0
-                do_update = true
-            end
-
-    
-            # Print information of starting first training step
-            if ic == 1 && traj== 1
+            # Print information of starting first training update step
+            if ic == 1 && update == 1
                 @info "Start 1st training step!"
             end
 
-            # Perform one online gradient step
-            step = online_gradient_step(;
-                lw_train,
-                tc,
-                sims,
-                vars0,
-                n_steps,
-                opt_state,
-                grad_sum,
-                do_update,
-            )            
+            # Define gradient sum
+            grad_sum = nothing
+            
 
 
-            # Compute metrics for logging
-            metrics = compute_metrics(
-                lw_train,
-                tc,
-                sims,
-                step.grads,
-            )
+            ### Loop over gradient accumulation steps
+            for accum in 1:tc.n_accum
+
+                # Copy reference variables
+                vars0 = deepcopy(sim_ref.variables) 
+
+                # Set target variables to reference variables
+                restart_from!(sims.target, vars0, n_seg)
+                restart_from!(sims.emulator, vars0, n_seg)
 
 
-            # Extract gradient sum and optimser state
-            grad_sum = step.grad_sum
-            opt_state = step.opt_state
+                # Compute gradients
+                grads = compute_gradients(tc, sims, vars0, n_seg)
 
-            # Update radiation scheme parameters after batch window
-            if do_update
-                lw_train = step.lw_train_updated
-                sims = @set sims.train.model.longwave_radiation = lw_train
-                do_update = false
+                # Fail loudly: one NaN gradient turns every parameter into NaN permanently
+                isfinite(tree_l2norm(grads)) || error("non-finite gradient at ic $(ic), update $(update), accum $(accum)")
+
+
+                # Accumulate gradients over accumulation window
+                grad_sum = isnothing(grad_sum) ? grads : tree_add(grad_sum, grads)
+
+
+                # Compute metrics for logging
+                metrics = compute_metrics(
+                    residuals_online(sims.emulator.variables, sims.target.variables),
+                    tc.loss_config,
+                    emulator,
+                    grads
+                )
+                csv_row!((; ic, update, accum, n_seg, eta); metrics, dir=tc.dir, file="training.csv")
+
+
+                # Propagate reference trajectory forward
+                sim_timesteps!(sim_ref, n_seg+tc.n_gap)
             end
 
 
-            # Write to .csv
-            csv_row!(
-                ic, traj, n_steps, eta;
-                metrics = metrics,
-                dir=tc.dir, file="training.csv"
-            )
+            ### Update emulator after accumulation window
+            # Calculate mean
+            grad_mean = tree_scale(grad_sum, 1f0/tc.n_accum)
 
+            # Update optimiser and emulator
+            opt_state, ps_new = Optimisers.update(opt_state, emulator.ps, grad_mean)
+            emulator = update_ps(emulator, ps_new)
 
-            # Propagate reference trajectory forward
-            sim_timesteps!(sim_ref, n_steps+tc.n_gap)
+            # Update training simulation
+            sims = @set sims.emulator.model.longwave_radiation = emulator
         end
 
 
@@ -174,76 +168,13 @@ function training_online(;
         @info "Initial condition $(ic) / $(tc.n_ic) finished!"
     end
 
+    # Log info
     @info "Training finished!"
 
+    # Save training figures
+    save_training_plots(tc; n_block=tc.n_accum)
 
-    # Plot final loss trajectory and metrics
-    # Create plots
-    p = plot_training(; 
-        dir = tc.dir, plot_kwargs = (; plot_title = "Training Plot"), n_batch = tc.n_batch,
-    )
-    pn = plot_metrics_norm(;
-        dir = tc.dir, plot_kwargs = (; plot_title = "Normed Metrics Plot"), weights = tc.loss_config.weights,
-    )
-    pr = plot_metrics_raw(;
-        dir = tc.dir, plot_kwargs = (; plot_title = "Raw Metrics Plot")
-    )
-
-    # Prepare plots directory
-    dir = joinpath(tc.dir, "train_plots")
-
-    # Save plots
-    Plots.savefig(p,  joinpath(dir, "training.png"))
-    Plots.savefig(pn, joinpath(dir, "metrics_norm.png"))
-    Plots.savefig(pr, joinpath(dir, "metrics_raw.png"))
-
-
-    # Return final trained scheme
-    return lw_train
-end
-
-
-
-# Function for performing one gradient step
-function online_gradient_step(;
-    lw_train,
-    tc,
-    sims,
-    vars0,
-    n_steps,
-    opt_state,
-    grad_sum,
-    do_update,
-)
-
-    # Compute gradients
-    grads = compute_gradients(
-        tc,
-        sims,
-        vars0,
-        n_steps,
-    )
-
-    # Accumulate gradients over batch window
-    grad_sum = isnothing(grad_sum) ? grads : tree_add(grad_sum, grads)
-
-
-    # Keep the current scheme unless an update is due below
-    lw_train_updated = lw_train
-
-    # Calculate mean gradient when scheme update is due
-    if do_update
-
-        # Calculate mean
-        grad_mean = tree_scale(grad_sum, 1f0/tc.n_batch)
-
-        # Update optimiser and scheme
-        opt_state, ps_new = Optimisers.update(opt_state, lw_train.ps, grad_mean)
-        lw_train_updated = update_ps(lw_train, ps_new)
-
-        # Reset gradient sum
-        grad_sum = nothing
-    end
-
-    return (; lw_train_updated, grads, grad_sum, opt_state)
+    
+    # Return final trained emulator
+    return emulator
 end

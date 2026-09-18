@@ -1,37 +1,69 @@
-### Configuration files for training a parameterization
+### Training Configuration structs
 ###
-### Contains:
-###     - TrainConfig:    contains parameters for a training run
+### Structs for holding the training configuration parameters for offline and online training
+###
+### No field has a default: every value is set in scripts/training/defaults.jl (one place only)
 
 
 
-# Struct holding training run configuration parameters
-@kwdef struct TrainConfig
-    seed::Int = 1234                                    # seed for RNG
-    name::String = "default"                            # name of the training run
-    dir::String = "default"                             # directory for storing training runs
-    
-    model::Type = PrimitiveWetModel                                         # model used for training
-    lw_target::Union{Nothing, SpeedyWeather.AbstractLongwave} = nothing     # target LW scheme
 
-    eta0::Float32 = 1f-2                                # initial learning rate
-    eta_decay::Float32 = 0.8f0                          # learning rate decay after an ic
-    clip_norm::Float32 = 1f0                            # clip norm for gradients
-    weight_decay::Float32 = 1f-3                        # weight decay for parameters
-    loss_config::LossConfig                             # weighting and normalization of the loss
 
-    t_spinup::Period = Day(30)                          # spinup time before training
-    start_date::DateTime = DateTime(2000, 1, 1)         # start date of simulation
+# Struct holding offline training parameters (other parameters defined in the target data, generated from derive_column_io())
+@kwdef struct TrainConfigOffline
+    unit::String                        # name of the training run
+    dir::String                         # directory for storing training runs
+    seed::Int                           # seed for RNG
 
-    n_ic::Int = 5                       # nr. of ic used for training
-    n_traj::Int = 100                   # nr. of trajectroies per ic u.f.t.
-    n_batch::Int = 4                    # batch size for training
-    n_steps_0::Int = 5                  # nr. of initial training steps per update
-    n_steps_inc::Int = 2                # increase of n_steps after an ic
-    n_gap::Int = 50                     # nr. of timestep!() between two trajectories
+    target_scheme::String               # scheme of the target dataset
+    target_unit::String                 # name of the target dataset unit
 
-    fac_pert_T::Float32 = 2f0           # additive perturbation factor for temperature
-    fac_pert_q::Float32 = 0.2f0         # multiplicative perturbation factor for humidity
+    target_ics::AbstractVector{Int}     # slice of ICs of pre-generated column IO data to use for training and validation
+    n_ic_val::Int                       # number of ICs used for validation (rest for training)
 
-    do_autodiff::Bool = true            # whether to use autodiff for training
+    eta0::Float32                       # initial learning rate
+    eta_decay::Float32                  # learning rate decay after each epoch
+    clip_norm::Float32                  # clip norm for gradients
+    weight_decay::Float32               # weight decay for parameters
+    loss_config::LossConfig             # weighting and normalization of the loss
+
+    n_epochs::Int                       # number of epochs for training
+    n_batches::Int                      # number of batches per epoch
+    batchsize::Int                      # training batch size (number of samples per update)
+end
+
+
+
+# Struct holding online training parameters
+@kwdef struct TrainConfigOnline
+    unit::String                        # name of the training run
+    dir::String                         # directory for storing training runs
+    seed::Int                           # seed for RNG
+
+    model::Type                         # model used for training
+    target::SpeedyWeather.AbstractLongwave      # target LW scheme
+
+    restart_scheme::String              # scheme of the restart state data
+    restart_unit::String                # name of the restart state data
+    restart_ics::AbstractVector{Int}    # slice of restart initial conditions to use
+    restart_js::AbstractVector{Int}     # slice of restart states to use
+
+    eta0::Float32                       # initial learning rate
+    eta_decay::Float32                  # learning rate decay after an ic
+    clip_norm::Float32                  # clip norm for gradients
+    weight_decay::Float32               # weight decay for parameters
+    loss_config::LossConfig             # weighting and normalization of the loss
+
+    t_spinup::Period                    # spinup time before training
+
+    n_ic::Int                           # nr. of ic used for training
+    n_updates::Int                      # nr. of scheme updates per ic
+    n_accum::Int                        # nr. of trajectory gradients accumulated per update
+    n_seg_0::Int                        # nr. of steps of initial differentiation segment
+    n_seg_inc::Int                      # increase of differentiation segment
+    n_gap::Int                          # nr. of timesteps between differentiation segments (for decorrelation of gradients)
+
+    fac_pert_T::Float32                 # additive perturbation factor for temperature
+    fac_pert_q::Float32                 # multiplicative perturbation factor for humidity
+
+    do_autodiff::Bool                   # whether to use autodiff for training
 end

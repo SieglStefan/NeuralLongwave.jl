@@ -1,26 +1,30 @@
-### Simulation functions
+### Simulation utilities
 ###
-### Helper functions for running and starting simulations
+### General helper functions for handling SpeedyWeather simulations
+###         - 1) Perturbation and time stepping
+###         - 2) Simulation (re-)starting
+###         - 3) Conversion Helpers
 
 
 
-# Calculate the number of timesteps from a number of days
-steps_from_days(days, Δt_sec) = round(Int, days * 86400 / Δt_sec)
-
-# Calculate the number of days from a number of timesteps
-days_from_steps(n_steps, Δt_sec) = n_steps * Δt_sec / 86400
 
 
 
-# Function for perturbing a grid variable field of a simulation
+
+
+
+
+### 1) Perturbation and time stepping
+
+# Perturbate a grid variable of a simulation by applying white noise
 function perturb_grid_field!(
-    sim,
-    var::Symbol; 
-    fac_add = 0f0,
-    fac_mult = 0f0,
-    offset = 0f0,
-    zeromin = false,
-    rng = Random.default_rng()
+    sim,                            # simulation to be perturbed
+    var::Symbol;                    # to be perturbed variable
+    fac_add = 0f0,                  # additive perturbation factor
+    fac_mult = 0f0,                 # multiplicative perturbation factor
+    offset = 0f0,                   # offset to be added to the field
+    zeromin = false,                # whether to set negative values to zero
+    rng = Random.default_rng()      # used RNG
 )
     
     # Check if grid has variable var
@@ -29,7 +33,7 @@ function perturb_grid_field!(
         return nothing
     end
 
-    # Initalize simulation (fill variables.grid if not initialized yet)
+    # Initalize simulation (fill variables.grid if not initialized yet, could be empty)
     SpeedyWeather.initialize!(sim, steps=0)
 
     # Copy (current) field for perturbation
@@ -51,41 +55,15 @@ function perturb_grid_field!(
     end
 
 
-    # Set variables onto the simulation and initialize again to apply perturbation
+    # Apply perturbed field to simulation (transform to spectral space and then set as prognostic variables, grid variables remain stale)
     SpeedyWeather.set!(sim; var => field)
-    SpeedyWeather.initialize!(sim, steps=0)
+
+    # XXX OLD: Initialize simulation (transform previously set prognostic vars to grid space and set grid variables)
+    # XXX OLD: SpeedyWeather.initialize!(sim, steps=0)
+    # Transform prognostic variables to grid variables and set them
+    SpeedyWeather.transform!(sim.variables, sim.model, initialize = true)
 
     return nothing
-end
-
-
-
-# Force the semi-implicit operators to be rebuilt from the CURRENT state.
-#   - reinitialize! skips the rebuild whenever the time step is unchanged, so the operators
-#     otherwise stay linearized around whatever state the simulation happened to be in when
-#     first_steps! ran — for a fresh model that is the analytic initial condition, not the
-#     reference climate. Different linearization = different trajectory.
-function force_reinitialize!(sim)
-    sim.model.implicit.Δt[] = 0
-    SpeedyWeather.reinitialize!(sim.model, sim.variables)
-    return nothing
-end
-
-
-# Initialize a simulation and do a first step (to initialize implicit solver)
-function first_steps!(sim; planned_steps = 2)
-
-    # Initialize simulation and do a first step
-    SpeedyWeather.initialize!(sim, steps=planned_steps)
-
-    for _ in 1:2
-        SpeedyWeather.time_step!(sim)
-    end
-
-    # Reinitialize simulation for continuation of time_step!() later
-    SpeedyWeather.reinitialize!(sim.model, sim.variables)
-
-    return sim
 end
 
 
@@ -101,3 +79,81 @@ function sim_timesteps!(sim, n_steps)
 
     return nothing
 end
+
+
+
+
+
+
+
+
+
+
+### 2) Simulation (re-)starting
+
+# Initialize a simulation and spinup leapfrog (do two first steps Δt/2 -> Δt -> 2*Δt)
+function spinup_leapfrog!(sim; total_steps = 0)
+
+    # Initialize simulation
+    SpeedyWeather.initialize!(sim, steps=total_steps+2)
+
+    # Spinup leapfrog
+    for _ in 1:2
+        SpeedyWeather.time_step!(sim)
+    end
+
+    # Reinitialize simulation (rebuilding model.implicit operators with leapfrog timestep 2*Δt)
+    SpeedyWeather.reinitialize!(sim.model, sim.variables)
+
+    return sim
+end
+
+
+
+# Force the implicit operators to be rebuilt from the current state
+#   (reinitialize! checks if implicit.Δt = current Δt, without setting implicit.Δt = 0 
+#   rebuilding implicit operators would be skipped and therefore defined wrong)
+function force_reinitialize!(sim)
+    
+    # Set implicit timestep to zero to force rebuilding
+    sim.model.implicit.Δt[] = 0
+
+    # Reinitailize simulation to rebuild semi-implicit operators
+    SpeedyWeather.reinitialize!(sim.model, sim.variables)
+
+    return nothing
+end
+
+
+
+# Restart a simulation from a stored state and propagate it n_steps
+function restart_from!(sim, vars0, n_steps)
+    
+    # Copy variables from reference variables vars0
+    copy!(sim.variables, vars0)
+
+    # Rebuild semi-implicit operators from the current state (otherwise the old reference state is used)
+    force_reinitialize!(sim) 
+
+    # Propagate simulation for n_steps
+    sim_timesteps!(sim, n_steps)
+
+    return sim
+end
+
+
+
+
+
+
+
+
+
+
+### 3) Conversion Helpers
+
+# Calculate the number of timesteps from a number of days
+steps_from_days(days, Δt_sec) = round(Int, days *86400 /Δt_sec)
+
+# Calculate the number of days from a number of timesteps
+days_from_steps(n_steps, Δt_sec) = n_steps *Δt_sec /86400

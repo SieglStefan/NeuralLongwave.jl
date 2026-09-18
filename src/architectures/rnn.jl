@@ -1,8 +1,23 @@
 ### Recurrent Neural Network architecture
 ###
 ### Defining struct and helper setup function
+###         - 1) Configuration
+###         - 2) Layer
+###         - 3) Forward pass
+###         - 4) Setup
+###
+### IMPORTANT: Currently in construction and not finished yet! 
 
 
+
+
+
+
+
+
+
+
+### 1) Configuration
 
 # RNN configuration struct
 @kwdef struct RNNConfig{A} <: AbstractArchConfig
@@ -19,6 +34,12 @@ info_arch(c::RNNConfig) = (; width=c.width, act=string(c.act))
 
 
 
+
+
+
+
+
+### 2) Layer
 
 ### Vertical bidirectional RNN over the atmospheric column
 ###
@@ -49,14 +70,19 @@ end
 
 
 
-### Forward pass
+
+
+
+
+
+### 3) Forward pass
 
 # One recurrent update — a vanilla RNN cell is a Dense layer applied to [x; h]
 @inline step_cell(cell, x, h, ps, st) = first(cell(vcat(x, h), ps, st))
 
 
 # Per-layer feature vector: this layer's temperature, the column scalars, and the position
-@inline function layer_features(m::VerticalRNN, X, k)
+@inline function layer_features(m::VerticalRNN, X::AbstractVector, k)
     return vcat(X[m.T_range[k]], X[m.S_range], eltype(X)(k / m.nlayers))
 end
 
@@ -113,6 +139,14 @@ end
 
 
 
+
+
+
+
+
+
+### 4) Setup
+
 # Setting up the vertical RNN architecture
 function setup_arch(
     arch_config::RNNConfig,
@@ -129,14 +163,13 @@ function setup_arch(
 
     # Locate the inputs in the flat input vector X
     layout = input_layout(input_spec, nlayers)
-    names  = keys(input_spec)
 
     T_range = layout.T                      # 1:nlayers
     S_range = (nlayers + 1):n_in            # everything after the profile
 
 
     # Only DirectOutput is supported so far: Y = [dT(1:n), olw, slwd]
-    n_out == nlayers + 2 
+    n_out == nlayers + 2 || error("VerticalRNN supports currently DirectOutput only: n_out=$n_out, expected $(nlayers+2)")
 
 
     # Feature vector of one layer: its temperature, the column scalars, its position

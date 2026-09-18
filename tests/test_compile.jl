@@ -88,7 +88,7 @@ end
 
 
 # Write the fixtures
-NeuralParam.save(make_stats_fixture(NLAYERS); dir = stats_dir(FIXTURE), file = "stats.jld2")
+NeuralParam.save(make_stats_fixture(NLAYERS); dir = stats_dir(FIXTURE), file = "zscore.jld2")
 
 save_store(; dir = reference_dir(REF_FIXTURE), file = "reference.jld2") do store
     grid  = (; temperature = ones(Float32, 4, 2))
