@@ -60,10 +60,10 @@ end
 # Derived scalar inputs
 @inline function in_Usfc(X, o, ij, vars, model, scheme)
     
-    # Extract variables and Boltzmann constant
-    sst = in_sst(X, o, ij, vars, model, scheme)
-    lst = in_lst(X, o, ij, vars, model, scheme)
-    lf = in_lf(X, o, ij, vars, model, scheme)
+    # Extract variables and Boltzmann constant (read directly: the in_* functions return the offset, not the value)
+    sst = SpeedyWeather.get_prognostic_step(vars.prognostic.ocean.sea_surface_temperature, model.time_stepping, scheme)[ij]
+    lst = vars.prognostic.land.soil_temperature[ij,1]
+    lf = model.land_sea_mask.land_fraction[ij]
     sigma = model.atmosphere.stefan_boltzmann
 
     # Calculate respective land and surface fluxes
@@ -137,7 +137,7 @@ end
 
 ### 3) Input filling functions
 
-# XXX Function for filling the input buffer with the selected inputs
+# Function for filling the input buffer with the selected inputs
 @generated function fill_inputs!(X, input_spec::NamedTuple{names}, ij, vars, model, scheme) where {names}
 
     # Building blocks

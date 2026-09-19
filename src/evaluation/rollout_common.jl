@@ -40,7 +40,7 @@ end
 
 
 
-# XXX One curve of one unit: the mean, its spread as a band, and a dotted line where it starts losing
+# One curve of one unit: the mean, its spread as a band, and a dotted line where it starts losing
 # trajectories (std and n_valid are optional)
 #   - value = :rms draws the root mean square over trajectories instead of the mean, without a band
 #   - a curve is of form (; days, mean, std, rms, n_valid) 

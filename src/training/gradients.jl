@@ -46,7 +46,7 @@ end
 
 ### 2) Online gradient
 
-# XXX Gradient computation wrapper allowing do_autodiff=false testmode
+# Gradient computation wrapper allowing do_autodiff=false testmode
 function compute_gradients(tc::TrainConfigOnline, sims, vars0, n_seg)
 
     # Test mode: return zero gradients, without Enzyme ever being reached
@@ -54,13 +54,15 @@ function compute_gradients(tc::TrainConfigOnline, sims, vars0, n_seg)
         return make_zero(sims.emulator.model.longwave_radiation.ps)
     end
 
-    # Normal mode: call Enzyme.autodiff
-    return Base.invokelatest(autodiff_gradients, tc, sims, vars0, n_seg)
+    # Run Enzyme in its own task with a 512 MiB call stack:
+    #   - Enzyme's compilation needs a very deep stack (without it: no result after 106 min instead of ~60 min)
+    #   - the task also hides the Enzyme call from the compiler, so do_autodiff = false never compiles it
+    return fetch(schedule(Task(() -> autodiff_gradients(tc, sims, vars0, n_seg), 1 << 29)))
 end
 
 
-# XXX Gradient computation over a n_steps trajectory using Enzyme
-@noinline function autodiff_gradients(tc, sims, vars0, n_seg)
+# Gradient computation over a n_steps trajectory using Enzyme
+function autodiff_gradients(tc, sims, vars0, n_seg)
 
     # Create adjoint vars from reference variables vars0
     vars_ad = deepcopy(sims.emulator.variables)

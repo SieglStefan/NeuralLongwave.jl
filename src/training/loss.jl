@@ -15,7 +15,7 @@
 
 
 
-### XXX 1) Loss definition and computation
+### 1) Loss definition and computation
 
 # Loss function for computing the total weighted MSE of residuals
 @generated function loss(res::NamedTuple{names}, lc) where {names}

@@ -51,7 +51,7 @@ function derive_zscore(;
     # Store information about zscore stats and print log
     write_info(; dir, 
         source      = column_io.source, 
-        ics         = collect(column_io.ics),
+        ic_subset   = collect(column_io.ic_subset),
         forms       = [string(nameof(typeof(f))) for f in fit_forms],
 
         column_io.dims...,

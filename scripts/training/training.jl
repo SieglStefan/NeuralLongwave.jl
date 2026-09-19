@@ -183,8 +183,8 @@ end
 
 
 
-# Run the training in a task with a 512 MiB stack (Enzyme's gradient compilation overflows the default one)
-emulator_trained = fetch(schedule(Task(() -> run_training(spectral_grid, emulator, train_config), 1<<29)))
+# Run the training
+emulator_trained = run_training(spectral_grid, emulator, train_config)
 
 
 
