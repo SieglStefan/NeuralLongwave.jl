@@ -26,7 +26,7 @@ function update_ps(em::ZeroLW, ps_new)
     return em
 end
 
-# Define written info for ZeroLW parameterization scheme
+# Define written info for ZeroLW parameterization emulator
 info_scheme(em::ZeroLW) = (;
     scheme       = "ZeroLW",
 )

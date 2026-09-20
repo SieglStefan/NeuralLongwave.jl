@@ -1,6 +1,6 @@
 ### Script for generating raw data for training/evaluation
 ###
-### Objective: Propagate a specific scheme and store its full state on a fixed sampling cadence
+### Objective: Propagate a specific target scheme and store its full state on a fixed sampling cadence
 ###
 ### Run on local machine in REPL (test file):
 ###     - ENV["SCHEME"] = "OBLW"
@@ -68,7 +68,7 @@ end
 
 ### Prepare main code
 
-# Set seed for reproducability
+# Set seed for reproducibility
 Random.seed!(c.base_seed)
 
 # Create output folder
@@ -137,7 +137,7 @@ write_info(;
 
     config = c,
 
-    scheme = (;
+    target = (;
         info_scheme(target)...,
     ),
 

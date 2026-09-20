@@ -33,17 +33,17 @@ SERIES = [
 
     # 0: Target scheme - weather scores must be ~zero
     (;
-        unit      = "0_OBLW",
-        baseline  = :OBLW,
-        overwrite = true,
+        unit        = "0_OBLW",
+        baseline    = :OBLW,
+        overwrite   = true,
         TINY...,
     ),
 
     # 1: No LW parameterization at all
     (;
-        unit      = "0_ZeroLW",
-        baseline  = :ZeroLW,
-        overwrite = true,
+        unit        = "0_ZeroLW",
+        baseline    = :ZeroLW,
+        overwrite   = true,
         TINY...,
     ),
 ]

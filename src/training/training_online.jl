@@ -35,14 +35,14 @@
 
 
 
-# Function for running a online training
+# Function for running an online training
 function training_online(;
     spectral_grid,      # spectral_grid of the model     
     emulator,           # longwave parameterization emulator to be trained
     tc,                 # run configuration (TrainConfigOnline)
 )
 
-    # Set seed for reproducability
+    # Set seed for reproducibility
     Random.seed!(tc.seed)
 
 

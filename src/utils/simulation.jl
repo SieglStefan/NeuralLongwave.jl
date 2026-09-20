@@ -58,8 +58,6 @@ function perturb_grid_field!(
     # Apply perturbed field to simulation (transform to spectral space and then set as prognostic variables, grid variables remain stale)
     SpeedyWeather.set!(sim; var => field)
 
-    # XXX OLD: Initialize simulation (transform previously set prognostic vars to grid space and set grid variables)
-    # XXX OLD: SpeedyWeather.initialize!(sim, steps=0)
     # Transform prognostic variables to grid variables and set them
     SpeedyWeather.transform!(sim.variables, sim.model, initialize = true)
 

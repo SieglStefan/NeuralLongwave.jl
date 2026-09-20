@@ -56,7 +56,7 @@ end
     t_spinup::Period                    # spinup time before training
 
     n_ic::Int                           # nr. of ic used for training
-    n_updates::Int                      # nr. of scheme updates per ic
+    n_updates::Int                      # nr. of emulator updates per ic
     n_accum::Int                        # nr. of trajectory gradients accumulated per update
     n_seg_0::Int                        # nr. of steps of initial differentiation segment
     n_seg_inc::Int                      # increase of differentiation segment

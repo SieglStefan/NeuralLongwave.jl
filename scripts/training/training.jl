@@ -57,7 +57,7 @@ print_unit_config(c, u; title = "$(slurm_experiment) / $(slurm_series) / $(c.uni
 
 ### Prepare main code
 
-# Set seed for reproducability
+# Set seed for reproducibility
 Random.seed!(c.seed)
 
 # Create output folder

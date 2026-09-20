@@ -12,7 +12,7 @@
 ###                 POINTWISE at matched lead times against the stored reference states.
 ###
 ###     - climate:  3 years:    The run has decorrelated from the reference, so pointwise scores
-###                 are meaningless. Only calculating temporal and spacial means.
+###                 are meaningless. Only calculating temporal and spatial means.
 ###
 ### The two legs have different shapes and very different runtimes. Therefore, they are stored separately
 ### as weather.jld2 and climate.jld2 in the same rollout folder.
@@ -31,7 +31,7 @@
 # Generate both legs of one rollout and store them as weather.jld2 / climate.jld2
 function generate_rollout(;
     dir,                # output folder, results/<series>/<experiment>/<variant>/rollout
-    emulator,           # emulator to roll out
+    scheme,             # scheme to roll out
     weather,            # weather leg settings, or nothing to skip the leg
     climate,            # climate leg settings, or nothing to skip the leg
 )
@@ -44,7 +44,7 @@ function generate_rollout(;
     w_summary = if isnothing(weather)
         nothing
     else
-        w = rollout_weather(emulator; weather...)
+        w = rollout_weather(scheme; weather...)
         save(w; dir, file = "weather.jld2")
         @info "Weather leg stored at $(dir)!"
         (; n_traj = length(w.traj_ic), horizon_days = last(w.days))
@@ -54,7 +54,7 @@ function generate_rollout(;
     c_summary = if isnothing(climate)
         nothing
     else
-        c = rollout_climate(emulator; climate...)
+        c = rollout_climate(scheme; climate...)
         save(c; dir, file = "climate.jld2")
         @info "Climate leg stored at $(dir)!"
         (; n_traj = length(c.traj_ic), horizon_days = last(c.days), survived_days = c.survived_days)
@@ -78,7 +78,7 @@ end
 
 # Short rollouts, scored pointwise against the reference trajectory at matched lead times
 function rollout_weather(
-    emulator;           # emulator to roll out
+    scheme;             # scheme to roll out
     raw_dir,            # reference raw dataset
     ic_subset,          # reference ICs to start from
     probes,             # fields the rollout is judged on
@@ -134,7 +134,7 @@ function rollout_weather(
 
 
 
-    # Create containers for the fields of the emulator and the reference
+    # Create containers for the fields of the scheme and the reference
     field_run, field_ref = map(field, probe_layers), map(field, probe_layers)
 
     # Labels of the trajectory axis, encoding every trajectory with (ic, start sample)
@@ -164,7 +164,7 @@ function rollout_weather(
 
 
                 # Fresh simulation for every trajectory
-                sim = initialize!(meta.model_type(meta.spectral_grid; longwave_radiation = emulator))
+                sim = initialize!(meta.model_type(meta.spectral_grid; longwave_radiation = scheme))
                 spinup_leapfrog!(sim; total_steps = horizon_sampled * meta.gap_steps)
 
                 # Build the implicit operators from state0 (as the reference did), then overwrite the prognostic state with start sample s
@@ -268,7 +268,7 @@ end
 
 # Long rollouts, reduced to global-mean time series and time-mean fields, compared as statistics
 function rollout_climate(
-    emulator;               # emulator to roll out
+    scheme;               # scheme to roll out
     raw_dir,                # reference raw dataset (:climate) in data/raw_data/
     ic_subset,              # reference ICs to start from
     probes,                 # fields the rollout is judged on
@@ -344,7 +344,7 @@ function rollout_climate(
 
 
             # Fresh simulation for every trajectory
-            sim = initialize!(meta.model_type(meta.spectral_grid; longwave_radiation = emulator))
+            sim = initialize!(meta.model_type(meta.spectral_grid; longwave_radiation = scheme))
             spinup_leapfrog!(sim; total_steps = horizon_sampled * meta.gap_steps)
 
             # Start from the reference's own start state, so run and reference share the initial climate

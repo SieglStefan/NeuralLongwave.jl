@@ -35,9 +35,9 @@ base_defaults() = (;
     nlayers         = 8,                        # number of vertical layers
 
 
-    # Rolled out emulator
+    # Rolled out scheme
     #   - nothing  -> load the trained emulator of the SAME experiment/series/unit
-    #   - a Symbol -> build a baseline from its recipe (:OBLW, :ABR, :ZeroLW, :ConstLW)
+    #   - a Symbol -> build the scheme from its recipe (:OBLW, :ABR, :ZeroLW, :ConstLW)
     baseline        = nothing,                  # baseline recipe, or nothing for the trained emulator
     output_form     = PlanckOutput(),           # output form of the ConstLW baseline (baseline = :ConstLW only)
 )

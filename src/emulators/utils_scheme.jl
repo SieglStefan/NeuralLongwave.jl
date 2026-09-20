@@ -26,7 +26,7 @@ build_scheme(v::Val, SG; kwargs...) = error("Unknown scheme recipe: $(typeof(v).
 
 
 
-# Build a OneBandLongwave target scheme given the spectral grid and emissivities
+# Build an OneBandLongwave target scheme given the spectral grid and emissivities
 build_scheme(::Val{:OBLW}, SG; em_ocean = 0.98f0, em_land = 0.98f0, kwargs...) =
     OneBandLongwave(SG;
         transmissivity     = FriersonLongwaveTransmissivity(SG),
@@ -34,7 +34,7 @@ build_scheme(::Val{:OBLW}, SG; em_ocean = 0.98f0, em_land = 0.98f0, kwargs...) =
                                 emissivity_ocean = em_ocean,
                                 emissivity_land  = em_land))
 
-# Build a AnalyticBandRadiation target scheme
+# Build an AnalyticBandRadiation target scheme
 build_scheme(::Val{:ABR}, SG; em_ocean = 1f0, em_land = 1f0, kwargs...) = nothing
 
 
@@ -93,7 +93,7 @@ end
 
 ### 2) Scheme Information
 
-# Information about OneBandLongwave target scheme
+# Information about OneBandLongwave target
 function info_scheme(scheme::OneBandLongwave)
     return (;
         scheme          = "OneBandLongwave",
@@ -103,7 +103,7 @@ function info_scheme(scheme::OneBandLongwave)
     )
 end
 
-# Information about AnalyticBandRadiation target scheme
+# Information about AnalyticBandRadiation target
 #function info_scheme(scheme::AnalyticBandRadiation)
 #    return nothing
 #end
@@ -124,12 +124,12 @@ apply_offline(ps, ::Nothing, ::Nothing, X) = repeat(ps, 1, size(X, 2))          
 apply_offline(ps, nn, st, X) = first(Lux.apply(nn, X, ps, st))                  # NeuralLW
 
 
-# Pieces of a emulator that offline training differentiates through
+# Pieces of an emulator that offline training differentiates through
 offline_parts(em::ConstLW)  = (nothing, nothing, em.zscore, em.output_form)                   
 offline_parts(em::NeuralLW) = (em.nn, em.st, em.zscore, em.output_form)                         
 
 
-# Input specification of a emulator
+# Input specification of an emulator
 emulator_inputs(em::ConstLW)  = (;)                                                                  
 emulator_inputs(em::NeuralLW) = em.input_spec                                                       
 
@@ -140,20 +140,20 @@ function check_continuation(em, c)
 
     # Emulator type (nameof(typeof(em)) is e.g. :NeuralLW, so a mistyped emulator_type also errors)
     nameof(typeof(em)) === c.emulator_type ||
-        error("Loaded scheme is a $(nameof(typeof(em))), config says $(c.emulator_type)!")
+        error("Loaded emulator is a $(nameof(typeof(em))), config says $(c.emulator_type)!")
 
     # Output form
     typeof(em.output_form) === typeof(c.output_form) ||
-        error("Loaded scheme has $(nameof(typeof(em.output_form))), config says $(nameof(typeof(c.output_form)))!")
+        error("Loaded emulator has $(nameof(typeof(em.output_form))), config says $(nameof(typeof(c.output_form)))!")
 
     # Zscore statistics
     em.zscore.zscore_name == "$(c.zscore_scheme)_$(c.zscore_unit)" ||
-        error("Loaded scheme uses zscore $(em.zscore.zscore_name), config says $(c.zscore_scheme)_$(c.zscore_unit)!")
+        error("Loaded emulator uses zscore $(em.zscore.zscore_name), config says $(c.zscore_scheme)_$(c.zscore_unit)!")
 
     # Inputs (NeuralLW only, ConstLW has no inputs)
     if em isa NeuralLW
         keys(em.input_spec) == Tuple(c.inputs) ||
-            error("Loaded scheme has inputs $(keys(em.input_spec)), config says $(Tuple(c.inputs))!")
+            error("Loaded emulator has inputs $(keys(em.input_spec)), config says $(Tuple(c.inputs))!")
     end
 
     return nothing

@@ -6,10 +6,10 @@
 
 
 
-# Run a training for a longwave parameterization scheme
+# Run a training for a longwave parameterization emulator
 function run_training(
     spectral_grid,          # spectral_grid of the model
-    emulator,               # longwave parameterization scheme to be trained
+    emulator,               # longwave parameterization emulator to be trained
     train_config,           # train configuration (TrainConfigOffline or TrainConfigOnline)
 )
 

@@ -14,7 +14,7 @@
 
 
 
-### Derive Zscore Statistics
+### 1) Derive Zscore Statistics
 
 # Derive zscore statistics from a raw dataset and store them as zscore.jld2
 function derive_zscore(;
@@ -26,7 +26,7 @@ function derive_zscore(;
     seed = 6000,             
 )
         
-    # Set seed for reproducability
+    # Set seed for reproducibility
     Random.seed!(seed)
 
 
@@ -39,7 +39,7 @@ function derive_zscore(;
         # All different output forms, fitted per column
         (g => (; map(coeff_stats, f.coeffs)..., center = f.center) for (g, f) in pairs(coeffs))...,
 
-        # Shape metadata, checked when a scheme loads these stats
+        # Shape metadata, checked when an emulator loads these stats
         dims = column_io.dims,
     )
 

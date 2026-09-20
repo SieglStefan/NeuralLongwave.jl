@@ -32,7 +32,7 @@ function training_offline(;
     tc,                 # run configuration (TrainConfigOffline)
 )
 
-    # Set seed for reproducability
+    # Set seed for reproducibility
     Random.seed!(tc.seed)
 
 

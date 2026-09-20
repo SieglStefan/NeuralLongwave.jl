@@ -24,7 +24,7 @@ struct NeuralLW{N,P,S,C,I,O,Z,B,F} <: AbstractEmulatorLW
 
     arch_config::C          # architecture configuration of NN  
     input_spec::I           # list of inputs used in the emulator, e.g. (; T = (in_t, :profile), Ts = (in_ts, :scalar), ...)
-    output_form::O          # output form of scheme, e.g. :linear
+    output_form::O          # output form of emulator, e.g. :linear
     zscore::Z               # loaded zscore parameters
 
     input_buffer::B         # input buffer to avoid allocation
@@ -92,7 +92,7 @@ end
 
 ### 2) SpeedyWeather Interface
 
-# Initializing function for SpeedyWeather (calcualte flux conversion factor)
+# Initializing function for SpeedyWeather (calculate flux conversion factor)
 function SpeedyWeather.initialize!(em::NeuralLW, model::PrimitiveEquation)
     
     # Calculate and assign conversion factors
@@ -153,7 +153,7 @@ function update_ps(em::NeuralLW, ps_new)
 end
 
 
-# Define written info for NeuralLW parameterization scheme
+# Define written info for NeuralLW parameterization emulator
 info_scheme(em::NeuralLW) = (;
     scheme       = "NeuralLW",
 

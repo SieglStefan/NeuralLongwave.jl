@@ -16,7 +16,7 @@
 ### 1) .csv metrics computation
 
 # Function for computing metrics (losses, rmse, pnorm, gnorm) during training
-function compute_metrics(res, lc, lw_scheme, grads)
+function compute_metrics(res, lc, emulator, grads)
 
     # Unweighted loss per field — its share in a plot is lambda_f * loss_f / loss_total
     losses = (; (Symbol(:loss_, f) => field_mse(res[f], lc.norm_weights[f], lc.area_weights)
@@ -32,7 +32,7 @@ function compute_metrics(res, lc, lw_scheme, grads)
         rmses...,
 
         # Optimizer diagnostics
-        pnorm = tree_l2norm(lw_scheme.ps),
+        pnorm = tree_l2norm(emulator.ps),
         gnorm = tree_l2norm(grads),
     )
 end

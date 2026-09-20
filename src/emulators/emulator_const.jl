@@ -18,12 +18,12 @@
 
 # ConstLW emulator
 struct ConstLW{P,O,Z,F} <: AbstractEmulatorLW
-    ps::P                   # normalized scheme parameters for linearization
+    ps::P                   # normalized emulator parameters for linearization
 
-    output_form::O          # output form of scheme
+    output_form::O          # output form of emulator
     zscore::Z               # loaded zscore parameters
 
-    flux_to_dT::F     # flux to temperature tendencies conversion factor
+    flux_to_dT::F           # flux to temperature tendencies conversion factor
 
     def_ocean_em::Float32   # default ocean emissivity
     def_land_em::Float32    # default land emissivity
@@ -74,10 +74,9 @@ end
 
 
 
-
 ### 2) SpeedyWeather Interface
 
-# Initializing function for SpeedyWeather (calcualte flux conversion factor)
+# Initializing function for SpeedyWeather (calculate flux conversion factor)
 function SpeedyWeather.initialize!(em::ConstLW, model::PrimitiveEquation)
     
     # Calculate and assign conversion factors

@@ -1,6 +1,6 @@
-### Script for generating rollouts of a trained emulator or a baseline
+### Script for generating rollouts of a target, trained emulator or a baseline
 ###
-### Objective: Roll out an emulator for both weather and climate against a reference
+### Objective: Roll out a scheme (emulator or target) for both weather and climate against a reference
 ###
 ### Run on local machine in REPL (test file):
 ###     - ENV["EXPERIMENT"] = "test"
@@ -62,7 +62,7 @@ do_weather || do_climate || error("Neither the weather nor the climate block is 
 
 ### Prepare main code
 
-# Set seed for reproducability
+# Set seed for reproducibility
 Random.seed!(c.seed)
 
 # Create output folder
@@ -76,19 +76,19 @@ spectral_grid = SpectralGrid(truncation = c.truncation, nlayers = c.nlayers)
 
 
 
-### Define the to be rolled out emulator
+### Define the to be rolled out scheme
 
 if isnothing(c.baseline)
 
     # Trained emulator of the SAME experiment/series/unit
     init_dir = emulator_dir(slurm_experiment, slurm_series, c.unit)
-    emulator = load(; dir = init_dir, file = "emulator.jld2")
+    scheme = load(; dir = init_dir, file = "emulator.jld2")
     @info "Rolling out the trained emulator at $(init_dir)!"
 
 else
 
     # Baseline built from its recipe, every recipe takes the keys it needs from the config and ignores the rest
-    emulator = build_scheme(c.baseline, spectral_grid; c...)
+    scheme = build_scheme(c.baseline, spectral_grid; c...)
     @info "Rolling out the baseline :$(c.baseline)!"
 end
 
@@ -122,7 +122,7 @@ climate_config = !do_climate ? nothing : (;
 # Generate both legs of the rollout
 rollout_summary = generate_rollout(;
     dir      = dir,
-    emulator = emulator,
+    scheme   = scheme,
     weather  = weather_config,
     climate  = climate_config,
 )
@@ -151,9 +151,9 @@ write_info(;
         do_climate ? (; climate_probes = collect(string.(keys(c.climate_probes)))) : (;),
     ),
 
-    emulator = (;
-        source     = isnothing(c.baseline) ? "trained" : "baseline",
-        info_scheme(emulator)...,
+    scheme = (;
+        source = isnothing(c.baseline) ? "trained" : "baseline",
+        info_scheme(scheme)...,
     ),
 
     grid = (;

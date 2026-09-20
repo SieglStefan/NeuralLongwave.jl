@@ -27,7 +27,7 @@
 
 # Struct holding zscore parameters
 struct ZScoreStats{VI,VO,C}
-    input_mean::VI          # input means, in the order of the scheme's input spec
+    input_mean::VI          # input means, in the order of the emulator's input spec
     input_std::VI           # input stds
 
     output_mean::VO         # output means, in the order decode expects

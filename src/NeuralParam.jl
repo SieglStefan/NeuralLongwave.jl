@@ -44,7 +44,7 @@ export
                         #load,
                         #load_run,
                 collect_runs,
-                collect_schemes,
+                collect_emulators,
                 collect_rollouts,
                 save_figure,
                         #csv_init,

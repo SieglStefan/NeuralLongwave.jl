@@ -43,7 +43,7 @@ function generate_raw_data(;
     fac_pert_q,     # multiplicative perturbation factor for humidity
 )
 
-    # Set seed for reproducability
+    # Set seed for reproducibility
     Random.seed!(seed)
 
 

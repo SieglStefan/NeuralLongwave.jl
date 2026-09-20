@@ -124,10 +124,10 @@ function loss_offline(ps, nn, st, zs, output_form, batch, lc)
     return loss(residuals_offline(ps, nn, st, zs, output_form, batch), lc)
 end
 
-# Residuals of an offline batch, from the decoded scheme outputs
+# Residuals of an offline batch, from the decoded emulator outputs
 function residuals_offline(ps, nn, st, zs, output_form, batch)
 
-    # Compute scheme output
+    # Compute emulator output
     Y = apply_offline(ps, nn, st, batch.X)
     Y = inv_zscore(Y, zs.output_mean, zs.output_std)
     out = decode(output_form, Y, batch.col, batch.consts)

@@ -121,8 +121,8 @@ collect_runs(experiment, series, units) = (;
     (Symbol(unit) => load_run(emulator_dir(experiment, series, unit)) for unit in units)...
 )
 
-# Utility function for collecting schemes
-collect_schemes(experiment, series, units) = (; 
+# Utility function for collecting emulators
+collect_emulators(experiment, series, units) = (; 
     (Symbol(unit) => load(; dir = emulator_dir(experiment, series, unit), file = "emulator.jld2") for unit in units)...
 )
 # Utility function for collecting rollouts
@@ -141,7 +141,6 @@ function save_figure(fig, filepath; px_per_unit = 4)
 
     return filepath
 end
-
 
 
 

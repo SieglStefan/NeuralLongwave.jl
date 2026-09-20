@@ -21,10 +21,10 @@ function compute_gradients(tc::TrainConfigOffline, emulator, batch)
     # Container for the parameter gradients
     bps = make_zero(emulator.ps)
 
-    # Scheme pieces that are held constant (ps is the only differentiated argument)
+    # Emulator pieces that are held constant (ps is the only differentiated argument)
     nn, st, zs, of = offline_parts(emulator)
 
-    # Differentiate the batch loss w.r.t. the scheme parameters
+    # Differentiate the batch loss w.r.t. the emulator parameters
     Enzyme.autodiff(
         Enzyme.Reverse, loss_offline, Enzyme.Active,
         Duplicated(emulator.ps, bps),

@@ -32,7 +32,7 @@
 ### 1) Reference check
 
 # Checks if a rollout against the TARGET scheme is exactly zero against its own reference over the whole rollout
-#   - anything else means, that there is a error in the rollout generation or related code
+#   - anything else means, that there is an error in the rollout generation or related code
 function test_reference(rollout; tol = 1f-6)
 
     # One row per probe, all trajectories summarized

@@ -159,8 +159,6 @@ end
 
 
 
-
-
 ### 3) Online Training
 
 # Setup simulations for online training loop
@@ -174,7 +172,7 @@ function setup_simulations(spectral_grid, tc, emulator)
     model_target    = tc.model(spectral_grid; longwave_radiation = tc.target)
     sim_target      = spinup_leapfrog!(initialize!(model_target))
 
-    # Create training simulation (to be trained scheme)
+    # Create training simulation (to be trained emulator)
     model_emulator     = tc.model(spectral_grid; longwave_radiation = emulator)
     sim_emulator       = spinup_leapfrog!(initialize!(model_emulator))
 
