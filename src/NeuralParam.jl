@@ -82,6 +82,7 @@ export
                         #restart_from!,
                         #steps_from_days,
                         #days_from_steps,
+                        #flux_to_dT_fac,
 
         ### emulators
         # abstract_longwave.jl
@@ -145,6 +146,8 @@ export
                 derive_column_io,
                         #create_column_io,
                         #fill_targets!,
+                        #reconstruct_net_flux,
+                        #check_net_flux,
         # derive_zscore.jl
                 derive_zscore,
                 fit_coeffs,

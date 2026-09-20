@@ -130,13 +130,13 @@ function residuals_offline(ps, nn, st, zs, output_form, batch)
     # Compute scheme output
     Y = apply_offline(ps, nn, st, batch.X)
     Y = inv_zscore(Y, zs.output_mean, zs.output_std)
-    out = decode(output_form, Y, batch.T_prof, batch.center)
+    out = decode(output_form, Y, batch.col, batch.consts)
 
     # Return residuals in form (nlayers, N)
     return (;
-        olw  = reshape(out.olw  .- batch.olw,  1, :),
-        slwd = reshape(out.slwd .- batch.slwd, 1, :),
-        dT   = out.dT .- batch.dT,
+        olw  = reshape(out.olw  .- batch.col.olw,  1, :),
+        slwd = reshape(out.slwd .- batch.col.slwd, 1, :),
+        dT   = out.dT .- batch.col.dT,
     )
 end
 

@@ -17,7 +17,7 @@
 ### 1) General Definition
 
 # NeuralLongwave emulator
-struct NeuralLW{N,P,S,C,I,O,Z,B} <: AbstractEmulatorLW
+struct NeuralLW{N,P,S,C,I,O,Z,B,F} <: AbstractEmulatorLW
     nn::N                   # neural network (Lux)
     ps::P                   # parameters of the NN (Lux)
     st::S                   # state of the NN (Lux)
@@ -28,6 +28,7 @@ struct NeuralLW{N,P,S,C,I,O,Z,B} <: AbstractEmulatorLW
     zscore::Z               # loaded zscore parameters
 
     input_buffer::B         # input buffer to avoid allocation
+    flux_to_dT::F     # flux to temperature tendencies conversion factor
 
     def_ocean_em::Float32   # default ocean emissivity
     def_land_em::Float32    # default land emissivity
@@ -68,11 +69,14 @@ function NeuralLW(;
     # Create empty input buffer
     input_buffer = zeros(Float32, n_in)
 
+    # Calculate flux factor
+    flux_to_dT = zeros(Float32, nlayers)
+
 
     return NeuralLW(
         nn, ps, st,
         arch_config, input_spec, output_form, zscore,
-        input_buffer,
+        input_buffer, flux_to_dT,
         def_ocean_em, def_land_em, def_co2
     )
 end
@@ -88,10 +92,15 @@ end
 
 ### 2) SpeedyWeather Interface
 
-# Initializing function for SpeedyWeather (nothing is needed here yet)
-function SpeedyWeather.initialize!(::NeuralLW, ::PrimitiveEquation)
+# Initializing function for SpeedyWeather (calcualte flux conversion factor)
+function SpeedyWeather.initialize!(em::NeuralLW, model::PrimitiveEquation)
+    
+    # Calculate and assign conversion factors
+    em.flux_to_dT .= flux_to_dT_fac(model)
+
     return nothing
 end
+
 
 # SpeedyWeather parameterization function for updating temperature tendencies
 Base.@propagate_inbounds function SpeedyWeather.parameterization!(
@@ -138,7 +147,7 @@ function update_ps(em::NeuralLW, ps_new)
     return NeuralLW(
         em.nn, ps_new, em.st,
         em.arch_config, em.input_spec, em.output_form, em.zscore,
-        em.input_buffer,
+        em.input_buffer, em.flux_to_dT,
         em.def_ocean_em, em.def_land_em, em.def_co2
     )
 end

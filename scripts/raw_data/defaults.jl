@@ -37,7 +37,7 @@ base_defaults() = (;
 
 
     # SW model
-    model           = PrimitiveWetModel,        # used SW model
+    model_type      = PrimitiveWetModel,        # used SW model
 
 
     # Spinup and start date

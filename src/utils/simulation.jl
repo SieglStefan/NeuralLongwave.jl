@@ -157,3 +157,17 @@ steps_from_days(days, Δt_sec) = round(Int, days *86400 /Δt_sec)
 
 # Calculate the number of days from a number of timesteps
 days_from_steps(n_steps, Δt_sec) = n_steps *Δt_sec /86400
+
+
+
+# Conversion factor from fluxes to temperature tendencies
+function flux_to_dT_fac(model)
+
+    # Extract model parameters
+    disgma = model.geometry.vertical_coordinates.σ_thickness
+    g = model.planet.gravity
+    cp = model.atmosphere.heat_capacity
+
+    # Return factor
+    return g ./ (cp .* disgma)
+end

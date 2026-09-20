@@ -60,7 +60,7 @@ function setup_target(tc, emulator)
 
     # Load stored target dataset and unpack the fields and the stored ics
     data = load(; dir, file)
-    (; fields, ic_subset, spectral_grid) = data
+    (; fields, ic_subset, spectral_grid, model_type) = data
 
 
     # Every requested IC has to be present in the stored dataset
@@ -71,7 +71,12 @@ function setup_target(tc, emulator)
     n_states_per_ic, rest = divrem(size(fields.T, 3), length(ic_subset))
     rest == 0 || error("Target dataset has $(size(fields.T,3)) states over $(length(ic_subset)) ICs - not equally sized!")
 
- 
+
+    # Collect consts
+    model = model_type(spectral_grid)
+    consts = (; center = emulator.zscore.center, flux_to_dT = flux_to_dT_fac(model))
+
+
     # Sample indices one stored IC occupies (for example 1:100 for ic 1, 101:200 for ic 2, etc.)
     block(ic) = (findfirst(==(ic), ic_subset) - 1) * n_states_per_ic .+ (1:n_states_per_ic)
 
@@ -87,15 +92,15 @@ function setup_target(tc, emulator)
 
     # Extract training and validation sets
     aw = area_weights(spectral_grid)
-    train_set = extract_set(fields, emulator, range_train, aw)
-    val_set   = extract_set(fields, emulator, range_val, aw)
+    train_set = extract_set(fields, emulator, range_train, aw, consts)
+    val_set   = extract_set(fields, emulator, range_val, aw, consts)
 
     return train_set, val_set
 end
 
 
 # Extracts and formats set of states from the target fields 
-function extract_set(fields, emulator, range, aw)
+function extract_set(fields, emulator, range, aw, consts)
 
     # Flatten a profile (npoints, nlayers, n_samples_total) -> (nlayers, npoints*n_samples_total), a scalar -> (1, npoints*n_samples_total)
     #   (from generate_target format (SW) -> Lux standard format)
@@ -110,16 +115,24 @@ function extract_set(fields, emulator, range, aw)
                init = zeros(Float32, 0, n_samples))
     X = zscore(X, emulator.zscore.input_mean, emulator.zscore.input_std)
 
-
-    # Return input and targets
-    return (;
-        X,
+    
+    # Put together column
+    col = (; 
         T_prof  = flat_prof(fields.T),
         olw     = vec(flat_scal(fields.olw)),
         slwd    = vec(flat_scal(fields.slwd)),
         dT      = flat_prof(fields.dT),
-        center  = emulator.zscore.center,
-        aw      = reshape(repeat(aw, length(range)), 1, :)
+        ps      = vec(flat_scal(fields.p)),
+        slwu    = vec(flat_scal(fields.slwu)),  
+    )
+
+
+    # Return input and targets
+    return (;
+        X,
+        col,
+        consts,
+        aw = reshape(repeat(aw, length(range)), 1, :)
     )
 end
 
@@ -128,11 +141,12 @@ end
 function take_batch(set, idx)
     return (;
         X      = set.X[:, idx],
-        T_prof = set.T_prof[:, idx],
-        olw    = set.olw[idx],
-        slwd   = set.slwd[idx],
-        dT     = set.dT[:, idx],
-        center = set.center,
+        col    = (; T_prof = set.col.T_prof[:, idx], 
+                    dT = set.col.dT[:, idx],
+                    olw = set.col.olw[idx], slwd = set.col.slwd[idx],
+                    ps  = set.col.ps[idx],  slwu = set.col.slwu[idx]
+                ),
+        consts = set.consts,
         aw     = set.aw[:, idx],
     )
 end

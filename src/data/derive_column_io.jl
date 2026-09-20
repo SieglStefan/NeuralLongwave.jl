@@ -35,7 +35,7 @@ function derive_column_io(;
     column_io = create_column_io(raw_dir, ic_subset)
 
     # Extract spectral grid
-    spectral_grid = with_raw_data(d -> d.spectral_grid, raw_dir, first(ic_subset))
+    spectral_grid, model_type = with_raw_data(d -> (d.spectral_grid, d.model_type), raw_dir, first(ic_subset))
        
 
     # Dataset dimensions
@@ -49,7 +49,7 @@ function derive_column_io(;
 
     # Save column IO data
     dir = column_io_dir(scheme, unit)
-    save((; column_io..., spectral_grid); dir, file = "column_io.jld2")
+    save((; column_io..., spectral_grid, model_type); dir, file = "column_io.jld2")
 
     # Write info and print log
     write_info(; dir,
@@ -80,7 +80,7 @@ function create_column_io(raw_dir, ic_subset)
 
     # Rebuild simulation
     sim = with_raw_data(raw_dir, first(ic_subset)) do d
-        initialize!(d.model(d.spectral_grid; longwave_radiation = d.lw_scheme))
+        initialize!(d.model_type(d.spectral_grid; longwave_radiation = d.lw_scheme))
     end
 
     # Shortcut variables
@@ -107,6 +107,7 @@ function create_column_io(raw_dir, ic_subset)
     dT = zeros(Float32, npoints, nlayers, n_states_total)
     olw = zeros(Float32, npoints, n_states_total)
     slwd = zeros(Float32, npoints, n_states_total)
+    slwu = zeros(Float32, npoints, n_states_total)
 
 
 
@@ -132,7 +133,7 @@ function create_column_io(raw_dir, ic_subset)
                     fill_inputs!(view(inp, ij, :, idx), INPUTS, ij, vars, model, lw)
 
                     # Outputs
-                    olw[ij, idx], slwd[ij, idx] = fill_targets!(view(dT, ij, :, idx), ij, vars, model)
+                    olw[ij, idx], slwd[ij, idx], slwu[ij, idx] = fill_targets!(view(dT, ij, :, idx), ij, vars, model)
                 end
 
                 idx += 1
@@ -146,8 +147,12 @@ function create_column_io(raw_dir, ic_subset)
     # Splits the input vector inp into named touples
     inputs = map(r -> length(r) == 1 ? Array(view(inp, :, first(r), :)) : Array(view(inp, :, r, :)), layout)
 
+    # Calculate net upward flux profile between layers, reconstructed from heating rates
+    F = reconstruct_net_flux(dT, olw, inputs.p, flux_to_dT_fac(model))
+    check_net_flux(F, slwu, slwd)
+
     return (;
-        fields      = (; inputs..., dT, olw, slwd),
+        fields      = (; inputs..., dT, olw, slwd, slwu, F),
         dims        = (; npoints, nlayers, truncation = model.spectral_grid.truncation),
         ic_subset   = collect(ic_subset),
         source      = raw_dir,
@@ -186,5 +191,42 @@ function fill_targets!(dT, ij, vars, model)
     end
 
     # Return fluxes
-    return vars.parameterizations.outgoing_longwave[ij], vars.parameterizations.surface_longwave_down[ij]
+    return  vars.parameterizations.outgoing_longwave[ij], 
+            vars.parameterizations.surface_longwave_down[ij],
+            vars.parameterizations.surface_longwave_up[ij]
+end
+
+
+
+# Reconstructing net fluxes recursively from 
+#   - Summed from the top, where no longwave comes in from space:  F[1] = olw
+function reconstruct_net_flux(dT, olw, ps, flux_to_dT)
+
+    # Container of shape (npoints, nlayers+1, n_states)
+    npoints, nlayers, n_states = size(dT)
+    F = zeros(Float32, npoints, nlayers+1, n_states)
+
+    # Loop over samples and columns, adding up the flux difference of every layer from the top down
+    for s in 1:n_states, ij in 1:npoints
+        F[ij, 1, s] = olw[ij, s]
+        for k in 1:nlayers
+            F[ij, k+1, s] = F[ij, k, s] + dT[ij, k, s] * ps[ij, s] / flux_to_dT[k]
+        end
+    end
+
+    return F
+end
+
+# Check the reconstructed net fluxes against the schemes own surface fluxes:
+#   - F at the surface must equal to slwu - slwd
+function check_net_flux(F, slwu, slwd; tol = 0.1f0)
+
+    # Largest deviation over all columns and samples [W/m²]
+    err = maximum(abs.(F[:, end, :] .- (slwu .- slwd)))
+
+    # Throw error if flux reconstruction failed
+    err < tol || error("Net flux reconstruction does not close at the surface: max error $(err) W/m² (tol $(tol) W/m²)")
+    @info "Net flux reconstruction closes at the surface: max error $(err) W/m²"
+
+    return err
 end

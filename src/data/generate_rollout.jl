@@ -90,7 +90,7 @@ function rollout_weather(
 
     # Read reference metadata
     meta = with_raw_data(raw_dir, first(ic_subset)) do d
-        (; d.spectral_grid, d.model, d.n_states, d.gap_steps, d.steps_per_day)
+        (; d.spectral_grid, d.model_type, d.n_states, d.gap_steps, d.steps_per_day)
     end
 
     # Extract grid dimensions (number of grid points per state and NT of number of vertical layers per probe)
@@ -164,7 +164,7 @@ function rollout_weather(
 
 
                 # Fresh simulation for every trajectory
-                sim = initialize!(meta.model(meta.spectral_grid; longwave_radiation = emulator))
+                sim = initialize!(meta.model_type(meta.spectral_grid; longwave_radiation = emulator))
                 spinup_leapfrog!(sim; total_steps = horizon_sampled * meta.gap_steps)
 
                 # Build the implicit operators from state0 (as the reference did), then overwrite the prognostic state with start sample s
@@ -279,7 +279,7 @@ function rollout_climate(
 
     # Read reference metadata
     meta = with_raw_data(raw_dir, first(ic_subset)) do d
-        (; d.spectral_grid, d.model, d.n_states, d.gap_steps, d.steps_per_day)
+        (; d.spectral_grid, d.model_type, d.n_states, d.gap_steps, d.steps_per_day)
     end
 
     # Extract grid dimensions (number of grid points per state and NT of number of vertical layers per probe)
@@ -344,7 +344,7 @@ function rollout_climate(
 
 
             # Fresh simulation for every trajectory
-            sim = initialize!(meta.model(meta.spectral_grid; longwave_radiation = emulator))
+            sim = initialize!(meta.model_type(meta.spectral_grid; longwave_radiation = emulator))
             spinup_leapfrog!(sim; total_steps = horizon_sampled * meta.gap_steps)
 
             # Start from the reference's own start state, so run and reference share the initial climate

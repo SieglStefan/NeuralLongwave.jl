@@ -97,7 +97,7 @@ for ic_nr in 1:c.n_ic
         seed           = c.base_seed + ic_nr,
 
         spectral_grid  = spectral_grid,
-        model          = c.model,
+        model_type     = c.model_type,
         lw_scheme      = target,
 
         t_spinup       = c.t_spinup,

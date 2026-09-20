@@ -23,7 +23,7 @@ function generate_raw_data(;
     seed,           # seed used for RNG
     
     spectral_grid,  # spectral grid
-    model,          # used model (e.g. PrimitiveWetModel)
+    model_type,     # used model (e.g. PrimitiveWetModel)
     lw_scheme,      # used LW parameterization scheme (e.g. OneBandLongwave)
     
     t_spinup,       # spinup time in Days (e.g. Days(10))
@@ -48,7 +48,7 @@ function generate_raw_data(;
 
 
     # Define model and initialize simulation
-    sim = initialize!(model(spectral_grid; longwave_radiation = lw_scheme))
+    sim = initialize!(model_type(spectral_grid; longwave_radiation = lw_scheme))
 
 
     if isnothing(restart_scheme) || isnothing(restart_unit)
@@ -123,7 +123,7 @@ function generate_raw_data(;
 
         # Store spectral grid, model and scheme information for rebuilding
         store["spectral_grid"] = spectral_grid
-        store["model"]         = model
+        store["model_type"]    = model_type
         store["lw_scheme"]     = lw_scheme
 
         # Store other useful metadata (arguments)
@@ -165,7 +165,7 @@ struct RawData{S}
     data_type::Symbol
 
     spectral_grid::SpeedyWeather.SpectralGrid
-    model::Type{<:SpeedyWeather.AbstractModel}
+    model_type::Type{<:SpeedyWeather.AbstractModel}
     lw_scheme::SpeedyWeather.AbstractLongwave
 
     sample_hours::Float32
@@ -195,7 +195,7 @@ function with_raw_data(fn, dir::String, ic::Integer)
             store["ic_nr"],
             store["data_type"],
             store["spectral_grid"],
-            store["model"],
+            store["model_type"],
             store["lw_scheme"],
             store["sample_hours"],
             store["phase_shift"],
