@@ -39,7 +39,7 @@ if [[ $# -ge 4 ]]; then
     ARRAY=$4
 else
     N=$(julia --project=. -e '
-        using NeuralParam, SpeedyWeather, Lux, Dates
+        using NeuralLongwave, SpeedyWeather, Lux, Dates
         include(ARGS[1])
         include(ARGS[2])
         SERIES_NAME == ARGS[3] || error("SERIES_NAME = $(SERIES_NAME) does not match file name $(ARGS[3])")

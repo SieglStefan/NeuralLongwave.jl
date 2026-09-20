@@ -1,4 +1,4 @@
-module NeuralParam
+module NeuralLongwave
 
 
 using SpeedyWeather

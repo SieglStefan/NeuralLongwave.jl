@@ -14,7 +14,7 @@
 
 ### Load packages
 using Revise
-using NeuralParam
+using NeuralLongwave
 using SpeedyWeather
 using Lux
 using Dates
