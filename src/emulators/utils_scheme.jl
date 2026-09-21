@@ -61,13 +61,12 @@ function build_scheme(::Val{:NeuralLW}, SG; arch_type, n_hidden, width, act, inp
                       output_form, zscore_scheme, zscore_unit, em_ocean, em_land, co2, kwargs...)
 
     # Define architecture
-    if arch_type == :MLP
-        arch_config = MLPConfig(n_hidden = n_hidden, width = width, act = act)
-    elseif arch_type == :RNN
-        arch_config = RNNConfig(width = width, act = act)
-    else
-        error("Unknown architecture type: $(arch_type)")
-    end
+    arch_config =
+    if arch_type == :MLP            MLPConfig(n_hidden = n_hidden, width = width, act = act)
+    elseif arch_type == :RNN        RNNConfig(; cell = :vanilla,  width, act)
+    elseif arch_type == :LSTM       RNNConfig(; cell = :lstm, width, act)
+    else error("Unknown architecture type: $(arch_type)") end
+
 
     return NeuralLW(;
         spectral_grid = SG,

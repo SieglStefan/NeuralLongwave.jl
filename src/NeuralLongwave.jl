@@ -165,6 +165,15 @@ export
         ### architectures
         # abstract_arch.jl
                         #AbstractArchConfig,
+        # cells.jl
+                        #build_cell,
+                        #VanillaCell,
+                        #n_state,
+                        #init_carry,
+                        #readout,
+                        #step_cell,
+                        #LSTMCell,
+                        #gate_block,
         # mlp.jl
                 MLPConfig,
                         #info_arch,
@@ -172,7 +181,6 @@ export
         # rnn.jl
                 RNNConfig,
                         #VerticalRNN,
-                        #step_cell,
                         #layer_features,
                         #sweep_up,
                         #sweep_down,
@@ -348,6 +356,7 @@ include("data/generate_rollout.jl")
 # Architectures
 include("architectures/abstract_arch.jl")
 include("architectures/mlp.jl")
+include("architectures/cells.jl")
 include("architectures/rnn.jl")
 
 
