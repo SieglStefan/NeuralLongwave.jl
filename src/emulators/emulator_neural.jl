@@ -28,7 +28,7 @@ struct NeuralLW{N,P,S,C,I,O,Z,B,F} <: AbstractEmulatorLW
     zscore::Z               # loaded zscore parameters
 
     input_buffer::B         # input buffer to avoid allocation
-    flux_to_dT::F     # flux to temperature tendencies conversion factor
+    flux_to_dT::F           # flux to temperature tendencies conversion factor
 
     def_ocean_em::Float32   # default ocean emissivity
     def_land_em::Float32    # default land emissivity

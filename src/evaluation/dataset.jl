@@ -48,7 +48,7 @@ thin_sample(samples, n_max) = length(samples) <= n_max ? samples : samples[round
 function plot_correlation(
     data,                           # column_io.fields
     target_name,                    # target, e.g. :dT
-    predictor_names;                # predictor(s), e.g. :T or (:T, :p)
+    predictor_names;                # predictor(s), e.g. :T or (:T, :ps)
     output_form = LinearOutput(),   # decides the T predictor
     title       = "",               # figure title
     style       = (;),              # entries of correlation_style() to change

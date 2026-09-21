@@ -53,7 +53,7 @@ end
 @inline in_lst(     X, o, ij, vars, model, scheme)  = (X[o+1] = vars.prognostic.land.soil_temperature[ij,1]; o+1)
 @inline in_lf(      X, o, ij, vars, model, scheme)  = (X[o+1] = model.land_sea_mask.land_fraction[ij]; o+1)
 @inline in_sinlat2( X, o, ij, vars, model, scheme)  = (X[o+1] = sind(model.geometry.latds[ij])^2; o+1)
-@inline in_p(       X, o, ij, vars, model, scheme)  = (X[o+1] = vars.parameterizations.surface_pressure[ij]; o+1)
+@inline in_ps(      X, o, ij, vars, model, scheme)  = (X[o+1] = vars.parameterizations.surface_pressure[ij]; o+1)
 
 
 
@@ -97,7 +97,7 @@ const INPUTS = (;
         lst         = (; func = in_lst,     kind = :scalar),            # land surface temperature (top layer)
         lf          = (; func = in_lf,      kind = :scalar),            # land fraction
         sinlat2     = (; func = in_sinlat2, kind = :scalar),            # latitude
-        p           = (; func = in_p,       kind = :scalar),            # surface pressure
+        ps          = (; func = in_ps,      kind = :scalar),            # surface pressure
         Usfc        = (; func = in_Usfc,    kind = :scalar),            # surface upward flux
 )
 

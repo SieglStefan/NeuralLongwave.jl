@@ -54,7 +54,7 @@ function ConstLW(;
 
 
     # Calculate flux factor
-    flux_to_dT = zeros(Float32, nlayers)
+    flux_to_dT = zeros(Float32, spectral_grid.nlayers)
 
 
     return ConstLW(

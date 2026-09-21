@@ -97,7 +97,7 @@ function create_column_io(raw_dir, ic_subset)
 
     # Extract number of inputs and layouts
     n_in = n_inputs(INPUTS, nlayers)                # scalar
-    layout = input_layout(INPUTS, nlayers)          # e.g. (; T=1:8, p=9:9, Ts=10:10, lf=11:11, ...))
+    layout = input_layout(INPUTS, nlayers)          # e.g. (; T=1:8, ps=9:9, sinlat2=10:10, lf=11:11, ...))
 
 
     # Container for inputs
@@ -148,7 +148,7 @@ function create_column_io(raw_dir, ic_subset)
     inputs = map(r -> length(r) == 1 ? Array(view(inp, :, first(r), :)) : Array(view(inp, :, r, :)), layout)
 
     # Calculate net upward flux profile between layers, reconstructed from heating rates
-    F = reconstruct_net_flux(dT, olw, inputs.p, flux_to_dT_fac(model))
+    F = reconstruct_net_flux(dT, olw, inputs.ps, flux_to_dT_fac(model))
     check_net_flux(F, slwu, slwd)
 
     return (;

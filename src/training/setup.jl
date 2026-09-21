@@ -122,7 +122,7 @@ function extract_set(fields, emulator, range, aw, consts)
         olw     = vec(flat_scal(fields.olw)),
         slwd    = vec(flat_scal(fields.slwd)),
         dT      = flat_prof(fields.dT),
-        ps      = vec(flat_scal(fields.p)),
+        ps      = vec(flat_scal(fields.ps)),
         slwu    = vec(flat_scal(fields.slwu)),  
     )
 
