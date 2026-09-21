@@ -84,7 +84,7 @@ oblw_defaults() = (;
 
 
     # Emulator inputs (NeuralLW only), provably complete for OBLW
-    inputs          = [:T, :sinlat2, :p, :Usfc],    # input names of the network (see INPUTS in input.jl)
+    inputs          = [:T, :sinlat2, :ps, :Usfc],    # input names of the network (see INPUTS in input.jl)
 )
 
 
@@ -110,7 +110,7 @@ abr_defaults() = (;
 
 
     # Emulator inputs (NeuralLW only), humidity is needed for the band absorption
-    inputs          = [:T, :log10q, :p, :sst, :lst, :lf],   # input names of the network (see INPUTS in input.jl)
+    inputs          = [:T, :log10q, :ps, :sst, :lst, :lf],   # input names of the network (see INPUTS in input.jl)
 )
 
 
