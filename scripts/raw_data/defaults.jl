@@ -7,7 +7,7 @@
 ### Every unit is merged onto DEFAULTS with checked_merge(), so a key no stacked block defines is
 ### an error, it never falls back to a default silently.
 ###         - 1) Base
-###         - 2) Target scheme (OBLW / ABR)
+###         - 2) Target schemes (OBLW / ABR)
 
 
 

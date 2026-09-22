@@ -1,6 +1,6 @@
 ### OBLW DEFAULT RAW DATA GENERATION
 ###
-### Configuration for OBLW default raw data generation
+### Configuration for OBLW offline training data
 
 
 

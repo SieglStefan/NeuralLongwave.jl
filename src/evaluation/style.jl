@@ -56,12 +56,13 @@ base_style() = (;
 # Raw data: plot_probes - one line per IC, so no legend
 probes_style() = merge(base_style(), (;
     legend = :none,
+    ncols = 2,
 ))
 
 
 # Dataset: plot_correlation
 correlation_style() = merge(base_style(), (;
-    ncols       = 4,
+    ncols       = 2,
     legend      = :none,
     n_points    = 3000,         # points drawn per panel (R^2 uses all of them)
     point_size  = 2,
@@ -71,10 +72,10 @@ correlation_style() = merge(base_style(), (;
 
 # Dataset: plot_hist
 hist_style() = merge(base_style(), (;
-    ncols      = 4,
+    ncols      = 2,
     legend     = :none,
     bins       = 30,
-    hist_color = (:grey, 0.8),
+    hist_color = (JL_BLUE, 0.8),
 ))
 
 

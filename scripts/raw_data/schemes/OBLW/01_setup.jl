@@ -1,4 +1,4 @@
-### OBLW SPINUP RAW DATA GENERATION
+### OBLW SETUP RAW DATA GENERATION
 ###
 ### Configuration for the OBLW spinup and decorrelation study (evaluation/expA)
 

@@ -28,7 +28,7 @@ n_layers(field) = ndims(field) == 3 ? size(field, 2) : 1
 flat_layer(field, k) = ndims(field) == 3 ? vec(view(field, :, k, :)) : vec(field)
 
 # Name of layer k of a dataset field (for plotting)
-layer_name(field, name, k) = ndims(field) == 3 ? "$(name)[$(k)]" : string(name)
+layer_name(field, name, k) = ndims(field) == 3 ? "$(probe_label(name))[$(k)]" : probe_label(name)
 
 # Thin out samples (for a readable scatter plot)
 thin_sample(samples, n_max) = length(samples) <= n_max ? samples : samples[round.(Int, range(1, length(samples), length = n_max))]

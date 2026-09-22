@@ -229,7 +229,7 @@ function plot_probes(
 
             # Colorful running means and grey raw trajectories
             if 1 < window <= length(samples)
-                lines!(ax, result.days, samples; color = (:grey, 0.5), linewidth = style.linewidth / 2)
+                lines!(ax, result.days, samples; color = (:grey, 0.25), linewidth = style.linewidth / 2)
                 lines!(ax, running_mean(result.days, samples, window)...; color, linewidth = style.linewidth)
             
             # Colorful raw trajectory
@@ -241,9 +241,9 @@ function plot_probes(
         # Plot RMSE caps and mean error growth curves (only meaningful for RMSE distances)
         if first(results).metric === :rmse
             isnothing(caps) ||
-                hlines!(ax, [caps[probe].mean]; color = :gray40, linestyle = :dash, linewidth = style.linewidth)
+                hlines!(ax, [caps[probe].mean]; color = :black, linestyle = :dash, linewidth = 1.5 * style.linewidth)
             isnothing(curves) ||
-                lines!(ax, curves[probe].days, curves[probe].mean; color = :black, linewidth = 2 * style.linewidth)
+                lines!(ax, curves[probe].days, curves[probe].mean; color = :black, linestyle = :solid, linewidth = 1.5 * style.linewidth)
         end
     end
 
