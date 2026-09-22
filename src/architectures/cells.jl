@@ -134,7 +134,7 @@ end
     w = size(h, 1)
 
     # Gates: sigmoid for the three fractions, tanh for the signed candidate
-    z = lstm_gates(cell, x, h, ps, st)
+    z = first(cell.dense(vcat(x, h), ps, st))
     i = Lux.sigmoid.(gate_block(z, 1, w))
     f = Lux.sigmoid.(gate_block(z, 2, w))
     g = tanh.(       gate_block(z, 3, w))
