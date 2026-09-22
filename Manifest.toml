@@ -2317,9 +2317,12 @@ version = "0.2.1"
 
 [[deps.SpeedyWeather]]
 deps = ["AbstractFFTs", "Adapt", "AssociatedLegendrePolynomials", "BitInformation", "CodecZlib", "ComponentArrays", "Dates", "DocStringExtensions", "DomainSets", "FFTW", "FastGaussQuadrature", "GPUArrays", "GenericFFT", "JLD2", "KernelAbstractions", "LinearAlgebra", "LowerTriangularArrays", "NCDatasets", "Primes", "Printf", "ProgressMeter", "Random", "ReactantCore", "RingGrids", "SpeedyTransforms", "SpeedyWeatherInternals", "Statistics", "StyledStrings", "TOML"]
-git-tree-sha1 = "1ae8f281df6734c828c50dbfbfef24bc139f6b2c"
+git-tree-sha1 = "effe096faafed3ead502c3744ad69beb0b2fb8e9"
+repo-rev = "main"
+repo-subdir = "SpeedyWeather"
+repo-url = "https://github.com/SpeedyWeather/SpeedyWeather.jl"
 uuid = "9e226e20-d153-4fed-8a5b-493def4f21a9"
-version = "0.22.1"
+version = "0.22.1+DEV"
 
     [deps.SpeedyWeather.extensions]
     SpeedyWeatherBrowzarrExt = "Browzarr"
