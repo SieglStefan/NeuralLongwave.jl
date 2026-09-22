@@ -46,4 +46,12 @@ SERIES = [
         overwrite   = true,
         TINY...,
     ),
+
+    # 2: Untrained ConstLW: ps = 0 
+    (;
+        unit        = "0_ConstLW",
+        baseline    = :ConstLW,
+        overwrite   = true,
+        TINY...,
+    ),
 ]
