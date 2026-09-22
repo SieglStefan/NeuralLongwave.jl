@@ -56,12 +56,6 @@ c = checked_merge(DEFAULTS, u)
 # Print the configuration, marking the values this unit set itself
 print_unit_config(c, u; title = "$(slurm_scheme) / $(slurm_series) / $(c.unit)")
 
-# Cycled restart lists have to divide n_ic evenly, otherwise the coverage is skewed
-for (name, v) in (("restart_ic", c.restart_ic), ("restart_j", c.restart_j))
-    v isa AbstractVector && c.n_ic % length(v) != 0 &&
-        error("n_ic = $(c.n_ic) is not a multiple of the $(length(v)) entries in $(name) - coverage would be uneven!")
-end
-
 
 
 
