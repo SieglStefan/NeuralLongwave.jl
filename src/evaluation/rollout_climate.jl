@@ -261,7 +261,7 @@ function climate_check_table(
     ro_climate,             # climate rollouts, keyed by unit
     ref,                    # reference climate rollout (climate_noise 0_OBLW)
     floor;                  # noise-floor climate rollout (climate_noise 0_OBLW_pert)
-    years     = nothing,    # evaluated years (nothing = all but the first)
+    years = 2:3,            # evaluated years (nothing = all but the first)
     zonal_tol = 1.5,        # allowed zonal_rmse relative to the floor
 )
 
@@ -277,11 +277,11 @@ function climate_check_table(
         T   = climate_stats(rollouts[unit], ref; probe = :T, years)
         imb = climate_stats(rollouts[unit], ref; probe = :imb_TOA, years)
 
-        # The three criteria
+        # The four criteria
         t_crit      = t_quantile(T.n_valid - 1)             # critical t-value (e.g. 2.2)
         pass_alive  = T.n_valid == T.n_traj                 # all trajectories survived
-        pass_T      = abs(T.bias) < t_crit * T.se           # if the T bias is within the critical range
-        pass_imb    = abs(imb.bias) < t_crit * imb.se       # if the TOA imbalance bias is within the critical range
+        pass_T      = abs(T.bias) <= t_crit * T.se          # if the T bias is within the critical range
+        pass_imb    = abs(imb.bias) <= t_crit * imb.se      # if the TOA imbalance bias is within the critical range
         zonal_ratio = T.zonal_rmse / floor_zonal            # ratio of unit's zonal RMSE to the floor's
         pass_zonal  = zonal_ratio <= zonal_tol              # if the zonal RMSE is within the allowed tolerance
 
@@ -292,8 +292,8 @@ function climate_check_table(
                   bias_T      = T.bias,                             # temperature bias
                   se_T        = T.se,                               # temperature standard error
                   t_T         = T.bias / T.se,                      # temperature t-value of bias (units of SE away from 0)
-                  ci_lo_T     = T.bias - t_crit * T.se,             # upper bound allowed range
-                  ci_hi_T     = T.bias + t_crit * T.se,             # lower bound allowed range
+                  ci_lo_T     = T.bias - t_crit * T.se,             # lower bound allowed range
+                  ci_hi_T     = T.bias + t_crit * T.se,             # upper bound allowed range
                 
                   bias_imb    = imb.bias,                           # TOA imbalance bias
                   se_imb      = imb.se,                             # TOA imbalance standard error
@@ -373,7 +373,7 @@ function climate_heatmap(metric, probe, rollouts, style)
 
     # t-value: threshold of the t-test from the number of trajectories
     t_crit = t_quantile(length(first(values(rollouts)).traj_j) - 1)
-    return (; label      = "t = bias / SE of $(probe_label(probe))  (magenta: |t| > $(t_crit))",
+    return (; label      = "t = bias / SE of $(probe_label(probe))  (magenta: |t| > $(round(t_crit, digits = 2)))",
               colorrange = (-style.t_range, style.t_range),
               highlight  = t_crit)
 end
@@ -385,7 +385,7 @@ function plot_climate_lonlat(
     ref,                    # reference climate rollout (0_OBLW)
     probe;                  # probe
     metric = :bias,         # :bias (mean over trajectories) or :t (bias / standard error)
-    years  = nothing,       # averaged years (e.g. 3 or 2:10, nothing = all but the first)
+    years  = 2:3,           # averaged years (e.g. 3 or 2:10, nothing = all but the first)
     looks  = nothing,       # labels per unit (panel titles)
     title  = "",            # figure title
     style  = (;),           # entries of lonlat_style() to change
@@ -410,7 +410,7 @@ function plot_climate_zonal(
     ref,                    # reference climate rollout (0_OBLW)
     probe;                  # probe (a profile, e.g. :T)
     metric = :bias,         # :bias (mean over trajectories) or :t (bias / standard error)
-    years  = nothing,       # averaged years (e.g. 3 or 2:10, nothing = all but the first)
+    years  = 2:3,           # averaged years (e.g. 3 or 2:10, nothing = all but the first)
     looks  = nothing,       # labels per unit (panel titles)
     title  = "",            # figure title
     style  = (;),           # entries of zonal_style() to change

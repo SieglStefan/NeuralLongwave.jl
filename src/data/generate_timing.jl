@@ -80,7 +80,7 @@ function generate_timing(;
     )
 
     # Store the unit data and meta data
-    units = Map((sweep, step, bytes) -> (; sweep_ms = sweep, step_ms = step, sweep_bytes = bytes), sweep_ms, step_ms, sweep_bytes)
+    units = map((sweep, step, bytes) -> (; sweep_ms = sweep, step_ms = step, sweep_bytes = bytes), sweep_ms, step_ms, sweep_bytes)
     timing = (; units, npoints, machine)
     save(timing; dir, file = "timing.jld2")
     @info "Timing stored at $(dir)!"
