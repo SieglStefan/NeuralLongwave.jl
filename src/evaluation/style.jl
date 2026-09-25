@@ -40,16 +40,16 @@ const FIELD_COLORS = (; T = JL_RED, olw = JL_BLUE, slwd = JL_GREEN, dT = JL_PURP
 
 # Default look of every figure
 base_style() = (;
-    textwidth_cm = 15.0,        # width of the LaTeX text block - change once the template is known
+    textwidth_cm = 30.0,        # width of the LaTeX text block - change once the template is known
     width        = 1.0,         # figure width, as a fraction of the text width
     aspect       = 0.8,         # panel height / panel width
     ncols        = 3,           # panels per row
-    fontsize     = 9,           # every text, in pt
+    fontsize     = 11,          # every text, in pt
     linewidth    = 1.2,         # in pt
-    legend       = :bottom,     # :bottom, :right or :none
+    legend       = :right,      # :bottom, :right or :none
     legend_cols  = 3,           # legend entries per row (legend = :bottom)
     markersize   = 7,           # in pt
-    colors     = (JL_BLUE, JL_GREEN, JL_RED, JL_PURPLE, :orange, :cyan, :magenta, :brown),
+    colors       = (JL_BLUE, JL_GREEN, JL_RED, JL_PURPLE, :orange, :cyan, :magenta, :brown),
 )
 
 
@@ -57,12 +57,15 @@ base_style() = (;
 probes_style() = merge(base_style(), (;
     legend = :none,
     ncols = 2,
+    aspect = 0.6,
+    fontsize = 13,
+    linewidth = 2
 ))
 
 
 # Dataset: plot_correlation
 correlation_style() = merge(base_style(), (;
-    ncols       = 2,
+    ncols       = 4,
     legend      = :none,
     n_points    = 3000,         # points drawn per panel (R^2 uses all of them)
     point_size  = 2,
@@ -72,7 +75,7 @@ correlation_style() = merge(base_style(), (;
 
 # Dataset: plot_hist
 hist_style() = merge(base_style(), (;
-    ncols      = 2,
+    ncols      = 4,
     legend     = :none,
     bins       = 30,
     hist_color = (JL_BLUE, 0.8),
@@ -81,7 +84,11 @@ hist_style() = merge(base_style(), (;
 
 # Training: plot_training
 training_style() = merge(base_style(), (;
-    raw_alpha = 0.3,            # opacity of the raw loss behind its block mean
+    ncols     = 3,
+    aspect    = 1.0,
+    raw_alpha = 0.3,
+    fontsize = 13,
+    linewidth = 2,
 ))
 
 
@@ -89,20 +96,28 @@ training_style() = merge(base_style(), (;
 shares_style() = merge(base_style(), (;
     width  = 0.5,
     ncols  = 1,
+    aspect    = 0.8,
+    fontsize = 13,
+    linewidth = 2,
 ))
 
 
 # Training: plot_rmse
 rmse_style() = merge(base_style(), (;
-    ncols = 4,
+    ncols  = 3,
+    aspect    = 1.0,
+    fontsize = 13,
+    linewidth = 2,
 ))
 
 
 # Heatmaps: the colors of every lon/lat map and zonal section
 heatmap_style() = merge(base_style(), (;
     legend             = :none,
-    signed_colormap    = :balance,      # bias
-    magnitude_colormap = :thermal,      # rmse, rmsb, maxdiff
+    signed_colormap    = :balance,      # bias, t-value
+    magnitude_colormap = :thermal,      # rmse, maxdiff
+    t_range            = 4,             # fixed color range ±t_range of t-value maps (comparable across figures)
+    highlight_color    = :magenta,      # cells beyond the t-quantile (not explained by chance)
 ))
 
 
@@ -111,13 +126,17 @@ lonlat_style() = merge(heatmap_style(), (;
     aspect          = 0.55,             # lon/lat panel plus its title
     ticklabels      = false,            # lon/lat tick labels
     coastline_width = 0.5,
+    fontsize = 13,
 ))
 
 
 # Weather: plot_weather_growth
 growth_style() = merge(base_style(), (;
-    band       = true,          # trajectory spread
+    band       = true,          # uncertainty of the mean curve
     band_alpha = 0.15,
+    fontsize = 13,
+    linewidth = 2,
+    band_kind = :se,            # ± standard error (many trajectories)
 ))
 
 
@@ -126,12 +145,15 @@ profile_style() = merge(base_style(), (;
     aspect     = 1.3,           # tall panels, the vertical axis is the atmosphere
     band       = false,         # trajectory spread as error bars
     markersize = 5,
+    fontsize = 13,
+    linewidth = 2,
 ))
 
 
 # Sections: plot_weather_zonal, plot_climate_zonal
 zonal_style() = merge(heatmap_style(), (;
     aspect = 0.8,
+    fontsize = 13,
 ))
 
 
@@ -141,17 +163,26 @@ drift_style() = merge(base_style(), (;
     aspect     = 0.6,
     band       = true,          # trajectory spread (bias only)
     band_alpha = 0.15,
+    fontsize = 13,
+    linewidth = 2,
+    band_kind = :minmax,        # range of the trajectories (few trajectories)
 ))
 
 
-# Skill plane: plot_skill_plane
-skill_style() = merge(base_style(), (;
+# Weather-cost plane: plot_weather_cost_plane (weather RMSE against runtime)
+weather_cost_style() = merge(base_style(), (;
+    textwidth_cm = 45.0,
     width       = 0.8,
     ncols       = 1,
     legend      = :right,
     trace_color = nothing,      # line through a group (nothing = the group's color)
     trace_width = 1.5,
     trace_alpha = 0.5,
+    fontsize = 16,
+    x_from_zero = false,
+    y_log       = false,        # runtime axis logarithmic (true: 0.5 and 2 equally far from 1)
+    errorbars   = true,
+    linewidth = 2,
 ))
 
 
@@ -170,7 +201,7 @@ skill_style() = merge(base_style(), (;
 probe_label(probe) = string(get((; olw = "OLW", slwd = "SLWD", sst = "SST", imb_TOA = "TOA imbalance"), probe, probe))
 
 metric_label(metric) = string(get((; mean = "global mean", rmse = "RMSE", bias = "bias",
-                                     maxdiff = "max |Δ|", rmsb = "RMSB"), metric, metric))
+                                     maxdiff = "max |Δ|"), metric, metric))
 
 # Axis label of one metric of one probe, e.g. "RMSE OLW [W/m²]"
 axis_label(metric, probe) = "$(metric_label(metric)) $(probe_label(probe)) [$(PROBES[probe].unit)]"
@@ -195,7 +226,7 @@ axis_label(metric, probe) = "$(metric_label(metric)) $(probe_label(probe)) [$(PR
 #     )
 #
 #   - i_unit is the position of the unit in the plotted data, it picks the default color
-#   - group joins units with a thin line in the skill plane
+#   - group joins units with a thin line in the weather-cost plane
 #   - unit can be a symbol or string, e.g.: :direct_w064_h3 or "direct_w064_h3"
 function look_of(looks, unit, i_unit, style)
 
@@ -247,7 +278,7 @@ function new_figure(style, n_panels; title = "", n_entries = 0)
     h = nr * style.aspect * w / nc
 
     # Extra lines of text are reserved for the title and for a legend below the panels
-    extra = (isempty(title) ? 0 : 2) + (style.legend === :bottom ? 1.5 * cld(n_entries, style.legend_cols) : 0)
+    extra = (isempty(title) ? 0 : 2) + (style.legend === :bottom ? 4.0 * cld(n_entries, style.legend_cols) : 0)
     h += extra * style.fontsize
 
     # Makie wants whole units

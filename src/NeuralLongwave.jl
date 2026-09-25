@@ -40,6 +40,7 @@ export
                 zscore_dir,
                 emulator_dir,
                 rollout_dir,
+                timing_dir,
                 prepare_out_dir,
                         #save,
                         #load,
@@ -47,6 +48,7 @@ export
                 collect_runs,
                 collect_emulators,
                 collect_rollouts,
+                load_timings,
                 save_figure,
                         #csv_init,
                         #csv_row!,
@@ -163,6 +165,10 @@ export
                         #rollout_weather,
                         #rollout_climate,
                         #get_layer,
+        # generate_timing.jl
+                generate_timing,
+                        #sweep!,
+                        #time_interleaved,
 
         ### architectures
         # abstract_arch.jl
@@ -251,7 +257,7 @@ export
                         #profile_style,
                         #zonal_style,
                         #drift_style,
-                        #skill_style,
+                        #weather_cost_style,
                         #probe_label,
                         #metric_label,
                         #axis_label,
@@ -266,6 +272,7 @@ export
                         #positive,
         # maps.jl
                         #color_scale,
+                        #highlight_mask,
                         #lonlat_matrix,
                 plot_lonlat,
                 plot_zonal,
@@ -327,9 +334,10 @@ export
                 plot_climate_lonlat,
                 plot_climate_zonal,
         # rollout_skill.jl
-                test_reference,
-                skill_table,
-                plot_skill_plane
+                plot_weather_cost_plane,
+        # timing.jl
+                timing_table,
+                print_timing
 
 
 
@@ -359,6 +367,7 @@ include("data/derive_restart_states.jl")
 include("data/derive_column_io.jl")
 include("data/derive_zscore.jl")
 include("data/generate_rollout.jl")
+include("data/generate_timing.jl")
 
 
 # Architectures
@@ -390,5 +399,6 @@ include("evaluation/rollout_common.jl")
 include("evaluation/rollout_weather.jl")
 include("evaluation/rollout_climate.jl")
 include("evaluation/rollout_skill.jl")
+include("evaluation/timing.jl")
 
 end

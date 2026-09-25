@@ -32,6 +32,7 @@ zscore_dir(scheme, unit)            = joinpath(ROOT, "data", "zscore", scheme, u
 # Results folder paths
 emulator_dir(experiment, series, unit)  = joinpath(ROOT, "results", experiment, series, unit, "emulator")       # trained emulators
 rollout_dir(experiment, series, unit)   = joinpath(ROOT, "results", experiment, series, unit, "rollout")        # generated rollouts
+timing_dir(experiment, series)          = joinpath(ROOT, "results", experiment, series, "timing")             # runtime of all units of a series (one job)
     
 
 
@@ -126,10 +127,13 @@ collect_emulators(experiment, series, units) = (;
     (Symbol(unit) => load(; dir = emulator_dir(experiment, series, unit), file = "emulator.jld2") for unit in units)...
 )
 # Utility function for collecting rollouts
-collect_rollouts(experiment, series, units; leg = :weather) = (; 
+collect_rollouts(experiment, series, units; leg = :weather) = (;
     (Symbol(unit) => load(; dir = rollout_dir(experiment, series, unit), file = "$(leg).jld2") for unit in units)...
 )
 
+
+# Utility function for loading the timing of a series (all units were timed in one job, one file)
+load_timings(experiment, series) = load(; dir = timing_dir(experiment, series), file = "timing.jld2")
 
 
 # Write a figure at its true size: .pdf for the thesis (vector), .png for everything else
@@ -242,6 +246,7 @@ info_value(x::Period)         = string(x)
 info_value(x::AbstractDict)   = Dict(string(k) => info_value(v) for (k, v) in x)
 info_value(x::NamedTuple)     = Dict(string(k) => info_value(v) for (k, v) in pairs(x))
 info_value(x::AbstractVector) = [info_value(v) for v in x]
+info_value(x::Tuple)          = [info_value(v) for v in x]
 
 
 # Git state of the repo that produced an artifact

@@ -50,6 +50,78 @@ function reduce_metric(values, metric)
 end
 
 
+# Checks if a weather rollout of the TARGET scheme is exactly zero against its own reference over the whole rollout
+#   - anything else means, that there is an error in the rollout generation or related code
+#   - weather only: the climate leg stores no reference (it IS the reference, as the unit 0_OBLW)
+function test_reference(rollout; tol = 1f-6)
+
+    # Only the weather leg has a stored reference
+    rollout.leg === :weather || error("test_reference needs a weather rollout - the climate leg stores no reference")
+
+    # One row per probe, all trajectories summarized
+    table = DataFrame(probe = Symbol[], max_error = Float64[], n_exact = Int[], n_traj = Int[], failed_ics = Vector{Int}[])
+
+    # Loop over probes
+    for probe in rollout.probes
+
+        # RMSE of every lead sample, layer and trajectory
+        errors = rollout.scores[probe].rmse
+
+        # Collect all maximum errors for all trajectories
+        traj_errors = [Float64(maximum(abs, view(errors, :, :, traj))) for traj in axes(errors, 3)]
+
+        # Select errors which are smaller than the given tolerance
+        exact = traj_errors .<= tol
+
+        # Summary of the probe: largest error, number of exact trajectories and the ICs of the others
+        push!(table, (; probe,
+                        max_error  = maximum(traj_errors),
+                        n_exact    = count(exact),
+                        n_traj     = length(exact),
+                        failed_ics = sort(unique(rollout.traj_ic[.!exact]))))
+    end
+
+    # Report the result
+    if all(table.n_exact .== table.n_traj)
+        @info "Reference reproduced exactly for every probe and trajectory."
+    else
+        @warn "Reference NOT reproduced for IC $(sort(unique(reduce(vcat, table.failed_ics)))) - every score carries this offset."
+    end
+
+    return table
+end
+
+
+# One row per unit, in the order of the input: the weather ranking
+function weather_table(
+    ro_weather;             # weather rollouts, keyed by unit
+    probe     = :T,         # ranked probe
+    day       = 14,         # weather lead day
+    early_day = 1,          # weather lead day of the context column
+)
+
+    # Scores and survival of every unit
+    table = DataFrame(map(collect(keys(ro_weather))) do unit
+
+        # Skill numbers at the lead day and the early day
+        weather_score = weather_skill(ro_weather[unit]; probe, day)
+        weather_early = weather_skill(ro_weather[unit]; probe, day = early_day)
+
+        return (; unit               = string(unit),
+                  weather_rmse       = weather_score.rmse,
+                  weather_se         = weather_score.std / sqrt(weather_score.n_valid),
+                  weather_rmse_early = weather_early.rmse,
+                  weather_alive      = weather_score.n_valid,
+                  weather_n_traj     = length(ro_weather[unit].traj_ic))
+    end)
+
+    # A unit is dead if any of its trajectories died before the lead day
+    table.dead = table.weather_alive .< table.weather_n_traj
+
+    return table
+end
+
+
 
 
 
@@ -243,8 +315,9 @@ function plot_weather_profile(
             look = look_of(looks, unit, i_unit, style)
             profile = weather_profile(rollout, probe, day, metric)
 
-            # Draw errorbars and connected layer points
-            style.band && errorbars!(ax, profile.mean, profile.layers, profile.std; direction = :x, color = look.color)
+            # Draw errorbars (+- standard error) and connected layer points
+            style.band && errorbars!(ax, profile.mean, profile.layers, profile.std ./ sqrt.(profile.n_valid);
+                                     direction = :x, color = look.color)
             scatterlines!(ax, profile.mean, profile.layers; color = look.color, linestyle = look.linestyle,
                           linewidth = style.linewidth, marker = look.marker, markersize = look.markersize,
                           label = look.label)
