@@ -42,6 +42,30 @@ field_mse(r, norm, aw) = sum(aw .* (r ./ norm).^2) / length(r)
 
 
 
+# Running mean over window samples, centered on its window, skipping non-finite values
+#   - returns the shortened day axis and the smoothed samples
+function running_mean(days, samples, window)
+
+    # Define container for centers of windows and means of windows
+    center_days  = Float64[]
+    mean_samples = Float64[]
+
+    # One mean per window start, only finite values count
+    for start in 1:(length(samples) - window + 1)
+
+        # Filter out non finite values in window range
+        finite = filter(isfinite, view(samples, start:start+window-1))
+
+        # Storre center of window and mean of window
+        push!(center_days, days[start + window÷2])
+        push!(mean_samples, isempty(finite) ? NaN : Float64(mean(finite)))
+    end
+
+    return center_days, mean_samples
+end
+
+
+
 
 
 

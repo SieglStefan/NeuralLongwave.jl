@@ -10,6 +10,7 @@ using Enzyme
 using Checkpointing
 
 import JLD2
+import Distributions
 using CSV
 using DataFrames
 using TOML
@@ -72,6 +73,7 @@ export
                         #wrmse,
                         #wbias,
                         #field_mse,
+                        #running_mean,
                         #area_weights,
                         #fit_linear,
         # simulation.jl
@@ -207,6 +209,7 @@ export
                 TrainConfigOnline,
         # gradients.jl
                         #compute_gradients,
+                        #autodiff_gradients,
                         #checkpointed_timesteps!,
         # setup.jl
                         #setup_optimiser,
@@ -270,7 +273,6 @@ export
                         #sample_axis,
                 global_means,
                 ic_distance,
-                running_mean,
                 rmse_caps,
                 mean_curves,
                 growth_rate,
@@ -300,6 +302,8 @@ export
                         #draw_curve!,
         # rollout_weather.jl
                         #reduce_metric,
+                test_reference,
+                weather_table,
                 weather_growth,
                 weather_profile,
                 weather_zonal,
@@ -308,14 +312,18 @@ export
                 plot_weather_profile,
                 plot_weather_zonal,
         # rollout_climate.jl
-                        #year_bias,
+                        #check_climate_pair,
+                        #bias_years,
+                        #climate_metric,
                         #crop,
-                        #translate_metric,
                 climate_drift,
                 climate_lonlat,
                 climate_zonal,
-                climate_skill,
+                        #t_quantile,
+                climate_stats,
+                climate_check_table,
                 plot_climate_drift,
+                        #climate_heatmap,
                 plot_climate_lonlat,
                 plot_climate_zonal,
         # rollout_skill.jl

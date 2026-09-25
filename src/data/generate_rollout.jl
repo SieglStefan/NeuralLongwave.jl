@@ -11,8 +11,8 @@
 ###     - weather:  14 days:    The run still tracks the reference trajectory, so it is scored
 ###                 POINTWISE at matched lead times against the stored reference states.
 ###
-###     - climate:  3 years:    The run has decorrelated from the reference, so pointwise scores
-###                 are meaningless. Only calculating temporal and spatial means.
+###     - climate:  3 years:    The run decorrelates from any reference, so pointwise scores
+###                 are meaningless. Started from restart states, only temporal and spatial means are stored
 ###
 ### The two legs have different shapes and very different runtimes. Therefore, they are stored separately
 ### as weather.jld2 and climate.jld2 in the same rollout folder.
@@ -264,187 +264,159 @@ end
 
 
 
-### 3) Climate leg (3 year rollouts)
+### 3) Climate leg (multi-year rollouts)
 
-# Long rollouts, reduced to global-mean time series and time-mean fields, compared as statistics
+# Long rollouts, reduced to global-mean time series and one time-mean map per year
 function rollout_climate(
-    scheme;               # scheme to roll out
-    raw_dir,                # reference raw dataset (:climate) in data/raw_data/
-    ic_subset,              # reference ICs to start from
+    scheme;                 # scheme to roll out
+    spectral_grid,          # spectral grid
+    model_type,             # SpeedyW model (e.g. PrimitiveWetModel)
+    restart_scheme,         # scheme folder of the restart states
+    restart_unit,           # unit folder of the restart states
+    restarts,               # (restart IC, state) pairs to start from - one trajectory each
     probes,                 # fields the rollout is judged on
-    horizon_days,           # rollout length in days
-    n_windows,              # number of averaging windows
+    n_years,                # rollout length in years (one time-mean map per year)
+    year_days,              # length of one averaging year in days (366, shorter only for tests)
+    sample_hours,           # base time difference between consecutive samples in hours (e.g. 24)
+    phase_shift,            # shift of steps from the base difference between samples (precession through diurnal cycle)
+    fac_pert_T,             # additive temperature perturbation of the start state (0 = none)
+    seed,                   # seed of the perturbation
 )
 
+    # Grid dimensions and number of trajectories (one per restart)
+    npoints      = spectral_grid.npoints
+    probe_layers = map(e -> e.kind === :profile ? spectral_grid.nlayers : 1, probes)      # e.g. = (; T = 8, olw = 1, ...)
+    n_traj       = length(restarts)
 
-    # Read reference metadata
-    meta = with_raw_data(raw_dir, first(ic_subset)) do d
-        (; d.spectral_grid, d.model_type, d.n_states, d.gap_steps, d.steps_per_day)
-    end
+    
 
-    # Extract grid dimensions (number of grid points per state and NT of number of vertical layers per probe)
-    npoints = meta.spectral_grid.npoints
-    probe_layers = map(e -> e.kind === :profile ? meta.spectral_grid.nlayers : 1, probes)      # e.g. = (; T = 8, olw = 1, ...)
+    # Extract timestepping and convert between steps and days/hours
+    Δt               = SpeedyWeather.Leapfrog(spectral_grid).Δt
+    steps_per_day    = steps_from_days(1, Δt)
+    gap_steps        = round(Int, sample_hours * steps_per_day / 24) + phase_shift
+    samples_per_year = round(Int, year_days * steps_per_day / gap_steps)
+    n_samples        = n_years * samples_per_year
 
-
-
-    # Real distance between two samples, in days
-    gap_days = meta.gap_steps / meta.steps_per_day
-
-    # Length of horizon_days in reference samples units
-    #   - (e.g. horizon_days = 3*366, gap_days = 1 -> horizon_sampled = 1098)
-    horizon_sampled = round(Int, horizon_days / gap_days)
-
-    # Check that the rollout still ends inside the reference (states are d[0] ... d[n_states-1])
-    horizon_sampled <= meta.n_states - 1 ||
-        error("horizon $(horizon_sampled) exceeds the reference ($(meta.n_states - 1) samples)!")
-
-    # Use every available IC as one trajectory
-    n_traj = length(ic_subset)
-
-
-
-    # As many whole windows as fit; the remainder (< window_len samples) is dropped
-    window_length = horizon_sampled ÷ n_windows
-    windows = [(i-1)*window_length + 1 : i*window_length for i in 1:n_windows]
-
-    # Calculate sample times in days (e.g. gap_days = 1: [1,2,3,...] -> [1.0, 2.0, 3.0, ...])
-    days = Float32.((1:horizon_sampled) .* gap_days)
+    # Sample times in days
+    gap_days = gap_steps / steps_per_day
+    days     = Float32.((1:n_samples) .* gap_days)
 
 
 
     # Grid area weights, so every global mean is area weighted
-    w = area_weights(meta.spectral_grid)
+    w = area_weights(spectral_grid)
 
-    # Utility functions for allocating properly shaped arrays
-    curve(n_layers) = fill(NaN32, horizon_sampled, n_layers, n_traj)        # mean vs. time (spatially averaged), NaN after a blow-up
-    field(n_layers) = zeros(Float32, n_windows, npoints, n_layers, n_traj)  # mean vs. grid (temporally averaged over window)
+    # Containers: NaN until written, so a blow-up leaves NaN behind
+    #   - global_mean: (sample, layer, traj)           the drift curve
+    #   - year_mean:   (year, gridpoint, layer, traj)  one time-mean map per completed year
+    global_mean = map(n_layers -> fill(NaN32, n_samples, n_layers, n_traj), probe_layers)
+    year_mean   = map(n_layers -> fill(NaN32, n_years, npoints, n_layers, n_traj), probe_layers)
 
-
-
-    # Create containers for storing time series and field data
-    global_mean_run, global_mean_ref    = map(curve, probe_layers), map(curve, probe_layers)
-    time_mean_run,   time_mean_ref      = map(field, probe_layers), map(field, probe_layers)
-
-    # Number of samples actually accumulated per window (a run that blows up stops early)
-    #   - e.g. n_acc[:, i_traj] = [53, 27, 0] -> died at sample 80
-    n_acc = zeros(Int, n_windows, n_traj)
-
-    # Sample at which every trajectory stopped (horizon_sampled if it survived the whole run)
-    survived = fill(horizon_sampled, n_traj)
+    # Sample at which every trajectory stopped (n_samples if it survived the whole run)
+    survived = fill(n_samples, n_traj)
 
 
 
 
 
-    ### Main loop: roll out one long trajectory per reference IC, reducing every sample as it is reached
-    # Loop over trajectories
-    for (i_traj, ic) in enumerate(ic_subset)
-        with_raw_data(raw_dir, ic) do d
+    ### Main loop: one long trajectory per restart
+    for (i_traj, (ic, j)) in enumerate(restarts)
+
+        # Fresh simulation, loaded with state j of restart IC ic
+        sim = initialize!(model_type(spectral_grid; longwave_radiation = scheme))
+        restart_from!(sim, restart_state(restart_scheme, restart_unit, ic, j), 0)
+
+        # Optional perturbation (for noise floor run), seeded by the restart state IC and number
+        fac_pert_T > 0 && perturb_grid_field!(sim, :temperature; fac_add = fac_pert_T, rng = Random.Xoshiro(seed + 100*ic + j))
+
+        # Start the time stepping (leapfrog start + implicit operators built from the loaded state)
+        spinup_leapfrog!(sim; total_steps = n_samples * gap_steps)
 
 
-            # Fresh simulation for every trajectory
-            sim = initialize!(meta.model_type(meta.spectral_grid; longwave_radiation = scheme))
-            spinup_leapfrog!(sim; total_steps = horizon_sampled * meta.gap_steps)
-
-            # Start from the reference's own start state, so run and reference share the initial climate
-            restart_from!(sim, d[0], 0)
+        # Running sums of the current year, one (gridpoint, layer) matrix per probe
+        year_sum = map(n_layers -> zeros(Float32, npoints, n_layers), probe_layers)
 
 
-            # Loop over samples
-            for l in 1:horizon_sampled
+        # Loop over samples
+        for l in 1:n_samples
 
-                # Propagate one reference gap and load the reference state at sample l
-                sim_timesteps!(sim, meta.gap_steps)
-                ref_state = d[l]
+            # Propagate one sampling gap
+            sim_timesteps!(sim, gap_steps)
 
-                # Stop this trajectory if the run blew up - everything after stays NaN (time series) or is discarded (windows)
-                if !isfinite(sum(SpeedyWeather.get_step(sim.variables.grid.temperature)))
-                    survived[i_traj] = l - 1
-                    @warn "Climate rollout $(i_traj) (IC $(ic)) went non-finite at day $(round(days[l], digits=1)) - trajectory stopped."
-                    break
-                end
-
-                # Averaging window this sample falls into
-                iw = findfirst(r -> l in r, windows)
-
-
-                # Loop over to be probed fields
-                for (p, probe) in pairs(probes)
-
-                    # Extract probe from run and reference state
-                    run = probe.func(sim.variables)
-                    ref = probe.func(ref_state)
-
-
-                    # Loop over layers (all layers for profiles, one pass for scalars)
-                    for k in 1:probe_layers[p]
-
-                        # Extract layer k of run and reference
-                        x, y = get_layer(run, k), get_layer(ref, k)
-
-                        # Global mean of this sample - the drift curve
-                        global_mean_run[p][l,k,i_traj] = wmean(x, w)
-                        global_mean_ref[p][l,k,i_traj] = wmean(y, w)
-
-                        # Accumulate towards the time mean of this window - the climate bias map
-                        @views time_mean_run[p][iw,:,k,i_traj] .+= x
-                        @views time_mean_ref[p][iw,:,k,i_traj] .+= y
-                    end
-                end
-
-                # Count this sample towards its window
-                n_acc[iw, i_traj] += 1
+            # Stop this trajectory and warn user if the run blew up, everything after stays NaN
+            if !isfinite(sum(SpeedyWeather.get_step(sim.variables.grid.temperature)))
+                survived[i_traj] = l - 1
+                @warn "Climate rollout $(i_traj) (restart IC $(ic), state $(j)) went non-finite at day $(round(days[l], digits=1)) - trajectory stopped."
+                break
             end
 
-            @info "Climate rollout $(i_traj)/$(n_traj) finished! (IC $(ic), survived $(round(days[max(survived[i_traj],1)], digits=1)) days)"
+
+            # Loop over probed fields
+            for (p, probe) in pairs(probes)
+
+                # Extract probe from the run
+                probe_field = probe.func(sim.variables)
+
+                # Loop over layers (all layers for profiles, one pass for scalars)
+                for k in 1:probe_layers[p]
+
+                    # Extract layer k
+                    x = get_layer(probe_field, k)
+
+                    # Global mean of this sample - the drift curve
+                    global_mean[p][l, k, i_traj] = wmean(x, w)
+
+                    # Accumulate towards the mean of the current year
+                    @views year_sum[p][:, k] .+= x
+                end
+            end
+
+
+            # Year completed: store its mean and reset the running sums
+            if l % samples_per_year == 0
+                year = l ÷ samples_per_year
+                for p in keys(probes)
+                    year_mean[p][year, :, :, i_traj] .= year_sum[p] ./ samples_per_year
+                    year_sum[p] .= 0
+                end
+            end
         end
+
+        # Print information about the completed trajectory
+        @info "Climate rollout $(i_traj)/$(n_traj) finished! (restart IC $(ic), state $(j), survived $(round(days[max(survived[i_traj],1)], digits=1)) days)"
     end
 
-
-    # Turn the accumulated sums into time means (windows a trajectory never reached become NaN)
-    for p in keys(probes), i_traj in 1:n_traj, iw in 1:n_windows
-        
-        # Discard windows that were not fully accumulated
-        s = n_acc[iw, i_traj] == length(windows[iw]) ? Float32(n_acc[iw,i_traj]) : NaN32
-
-        for k in 1:probe_layers[p]
-            @views time_mean_run[p][iw,:,k,i_traj] ./= s
-            @views time_mean_ref[p][iw,:,k,i_traj] ./= s
-        end
-    end
 
 
     # Collect everything (everything per trajectory, no metric applied yet - evaluation does that)
     return (;
         # Identity
         leg           = :climate,
-        raw_dir       = raw_dir,
-        spectral_grid = meta.spectral_grid,
+        spectral_grid = spectral_grid,
         probes        = keys(probes),
 
-        # Time axis (samples)
-        gap_days        = Float32(gap_days),          # days between two reference samples
-        horizon_days    = Float32(horizon_days),      # requested horizon
-        horizon_samples = horizon_sampled,            # horizon actually rolled out
-        days            = days,                       # (horizon_samples,) time of every sample
+        # Start states
+        restart_scheme, restart_unit,
+        fac_pert_T,
 
-        # Trajectory axis (one trajectory per IC)
-        traj_ic          = collect(ic_subset),              # (n_traj,)
-        survived_samples = survived,                        # (n_traj,) last finite sample (= horizon_samples if stable)
+        # Time axis (samples)
+        gap_days         = Float32(gap_days),       # days between two samples
+        year_days        = year_days,               # length of one averaging year in days
+        samples_per_year = samples_per_year,        # samples per yearly mean
+        n_years          = n_years,                 # number of yearly means
+        days             = days,                    # (n_samples,) time of every sample
+
+        # Trajectory axis
+        traj_ic          = [ic for (ic, j) in restarts],    # (n_traj,) restart IC of every trajectory
+        traj_j           = [j for (ic, j) in restarts],     # (n_traj,) restart state of every trajectory
+        survived_samples = survived,                        # (n_traj,) last finite sample (= n_samples if stable)
         survived_days    = Float32.(survived .* gap_days),  # (n_traj,)
 
-        # Global-mean time series (drift): each (horizon_samples, layer, n_traj), NaN after blow-up
-        global_mean_run, global_mean_ref,
+        # Global-mean time series (drift): each (n_samples, layer, n_traj), NaN after a blow-up
+        global_mean,
 
-        # Window axis
-        window_samples = window_length,                                           # samples per window
-        window_ranges  = windows,                                                 # (n_windows,) sample ranges
-        window_days    = [(days[first(r)], days[last(r)]) for r in windows],      # (n_windows,) (start, end) in days
-        n_acc          = n_acc,                                                   # (n_windows, n_traj) samples summed per window
-
-        # Time-mean fields per window: each (n_windows, npoints, layer, n_traj), NaN if the window was not completed
-        time_mean_run, time_mean_ref,
+        # Yearly mean maps: each (n_years, npoints, layer, n_traj), NaN for years not completed
+        year_mean,
     )
 end
 
