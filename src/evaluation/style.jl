@@ -127,6 +127,8 @@ lonlat_style() = merge(heatmap_style(), (;
     ticklabels      = false,            # lon/lat tick labels
     coastline_width = 0.5,
     fontsize = 13,
+    ncols      = 2,
+    textwidth_cm = 30.0,
 ))
 
 
@@ -152,8 +154,10 @@ profile_style() = merge(base_style(), (;
 
 # Sections: plot_weather_zonal, plot_climate_zonal
 zonal_style() = merge(heatmap_style(), (;
-    aspect = 0.8,
+    aspect = 0.6,
     fontsize = 13,
+    ncols      = 2,
+    textwidth_cm = 20.0,
 ))
 
 
@@ -175,14 +179,15 @@ weather_cost_style() = merge(base_style(), (;
     width       = 0.8,
     ncols       = 1,
     legend      = :right,
-    trace_color = nothing,      # line through a group (nothing = the group's color)
+    trace_color = :black,      # line through a group (nothing = the group's color)
     trace_width = 1.5,
     trace_alpha = 0.5,
     fontsize = 16,
     x_from_zero = false,
     y_log       = false,        # runtime axis logarithmic (true: 0.5 and 2 equally far from 1)
-    errorbars   = true,
+    errorbars   = false,
     linewidth = 2,
+    markersize   = 15,           # in pt
 ))
 
 

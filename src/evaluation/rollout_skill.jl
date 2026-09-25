@@ -10,15 +10,15 @@
 # Weather skill against runtime, one marker per unit (lower left = accurate and fast)
 #   - x: weather RMSE ± standard error (weather_table)
 #   - y: sweep time relative to the reference, error bar = 25 % - 75 % quantile of the per-round ratios (timing_table)
-#   - marker: filled = climate check passed (or not checked), hollow = failed (climate_check_table),
+#   - marker: filled = climate check passed (or not checked), hollow = failed (climate_table),
 #             black cross on top = a weather trajectory died (weather_table.dead)
 function plot_weather_cost_plane(
     skill,                                  # weather_table
     timing;                                 # timing_table of the same units
-    climate = nothing,                      # climate_check_table, or nothing (all markers filled)
+    climate = nothing,                      # climate_table, or nothing (all markers filled)
     looks   = nothing,                      # appearance per unit (group joins units with a thin line)
-    xlabel  = "weather: RMSE T [K]",        # must match probe and day of the weather_table
-    ylabel  = "runtime LW / OBLW",
+    xlabel  = "Weather: 14-day RMSE T [K]",        # must match probe and day of the weather_table
+    ylabel  = "Runtime Emulator / OBLW",
     title   = "",                           # figure title
     style   = (;),                          # entries of weather_cost_style() to change
 )

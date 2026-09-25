@@ -257,7 +257,7 @@ end
 #       - all its trajectories survived the years
 #       - |bias| of T and of the TOA imbalance < t_quantile(n-1) * SE (t-test: not distinguishable from 0)
 #       - zonal_rmse of T <= zonal_tol * the floor's (the floor is one realization, hence a margin)
-function climate_check_table(
+function climate_table(
     ro_climate,             # climate rollouts, keyed by unit
     ref,                    # reference climate rollout (climate_noise 0_OBLW)
     floor;                  # noise-floor climate rollout (climate_noise 0_OBLW_pert)

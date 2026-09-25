@@ -106,7 +106,7 @@ function print_timing(timing; reference = first(keys(timing.units)))
 
     # Warn if the machine was busy
     worst = maximum(table.noise)
-    worst > 1.1 && @warn "Machine was not quiet (median/min up to $(round(worst, digits = 2))) - rerun!"
+    worst > 1.1 && @warn "Machine was not quiet (median/min up to $(round(worst, digits = 2))) - rerun?!"
 
-    return table
+    return nothing
 end

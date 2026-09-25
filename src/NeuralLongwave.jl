@@ -328,7 +328,7 @@ export
                 climate_zonal,
                         #t_quantile,
                 climate_stats,
-                climate_check_table,
+                climate_table,
                 plot_climate_drift,
                         #climate_heatmap,
                 plot_climate_lonlat,

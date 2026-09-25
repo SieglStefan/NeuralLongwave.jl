@@ -138,10 +138,20 @@ function time_interleaved(f, sims, n_rounds)
             #   - mod1(x,3) gives remainder of a/b in form 1,2,3 instead of 1,2,0 (mod)
             k = mod1(i + r - 1, n_schemes)
 
+
+            # Clean up garbage before the call (untimed) and switch the GC off during it
+            # (so no garbage-collection pause lands inside the measured time)
+            GC.gc(false)
+            GC.enable(false)
+
             # Time one call
             t0 = time_ns()
             f(sims[k])
             t1 = time_ns()
+
+            # Switch the GC back on
+            GC.enable(true)
+
 
             # Store timing in milliseconds
             samples[k][r] = (t1 - t0) / 1e6
