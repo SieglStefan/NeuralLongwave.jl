@@ -51,9 +51,9 @@ c = checked_merge(DEFAULTS, u)
 # Print the configuration, marking the values this unit set itself
 print_unit_config(c, u; title = "$(slurm_experiment) / $(slurm_series) / $(c.unit)")
 
-# A leg runs only if its default block was stacked
-do_weather = haskey(c, :weather_raw_unit)
-do_climate = haskey(c, :climate_raw_unit)
+# A leg runs only if its default block was stacked (and a unit can switch it off: weather_n_starts / climate_n_years = 0)
+do_weather = haskey(c, :weather_raw_unit) && c.weather_n_starts > 0
+do_climate = haskey(c, :climate_n_years)  && c.climate_n_years  > 0
 do_weather || do_climate || error("Neither the weather nor the climate block is stacked - nothing to do!")
 
 
@@ -65,8 +65,17 @@ do_weather || do_climate || error("Neither the weather nor the climate block is 
 # Set seed for reproducibility
 Random.seed!(c.seed)
 
-# Create output folder
-dir = prepare_out_dir(rollout_dir(slurm_experiment, slurm_series, c.unit); overwrite = c.overwrite)
+# Output folder, shared by all tasks of a unit (see split_tasks) - every task writes only its own files
+dir = mkpath(rollout_dir(slurm_experiment, slurm_series, c.unit))
+
+# Info file of this task: one per leg (split_tasks runs weather and climate as separate tasks)
+info_file = !do_climate ? "info_weather.toml" :
+            !do_weather ? "info_climate.toml" : "info.toml"
+
+# Refuse to replace existing files unless overwrite is set
+own_files = [info_file; do_weather ? "weather.jld2" : String[]; do_climate ? "climate.jld2" : String[]]
+existing  = filter(file -> isfile(joinpath(dir, file)), own_files)
+isempty(existing) || c.overwrite || error("Files already exist in $(dir): $(existing) - set overwrite = true")
 
 
 # Spectral grid
@@ -82,7 +91,7 @@ if isnothing(c.baseline)
 
     # Trained emulator of the SAME experiment/series/unit
     init_dir = emulator_dir(slurm_experiment, slurm_series, c.unit)
-    scheme = load(; dir = init_dir, file = "emulator.jld2")
+    scheme = NeuralLongwave.load(; dir = init_dir, file = "emulator.jld2")
     @info "Rolling out the trained emulator at $(init_dir)!"
 
 else
@@ -110,11 +119,18 @@ weather_config = !do_weather ? nothing : (;
 
 # Climate leg, or nothing if its block was not stacked
 climate_config = !do_climate ? nothing : (;
-    raw_dir      = raw_data_dir(c.climate_raw_scheme, c.climate_raw_series, c.climate_raw_unit),
-    ic_subset    = c.climate_ic_subset,
-    probes       = c.climate_probes,
-    horizon_days = c.climate_horizon_days,
-    n_windows    = c.climate_n_windows,
+    spectral_grid  = spectral_grid,
+    model_type     = c.climate_model_type,
+    restart_scheme = c.climate_restart_scheme,
+    restart_unit   = c.climate_restart_unit,
+    restarts       = c.climate_restarts,
+    probes         = c.climate_probes,
+    n_years        = c.climate_n_years,
+    year_days      = c.climate_year_days,
+    sample_hours   = c.climate_sample_hours,
+    phase_shift    = c.climate_phase_shift,
+    fac_pert_T     = c.climate_fac_pert_T,
+    seed           = c.seed,
 )
 
 
@@ -131,10 +147,10 @@ rollout_summary = generate_rollout(;
 
 
 
-### Create and store info.toml file
+### Create and store the info file of this task
 write_info(;
     dir  = dir,
-    file = "info.toml",
+    file = info_file,
 
     slurm = (;
         experiment = slurm_experiment,

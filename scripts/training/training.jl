@@ -90,7 +90,7 @@ else
         "$((c.init_experiment, c.init_series, c.init_unit))!")
 
     init_dir = emulator_dir(c.init_experiment, c.init_series, c.init_unit)
-    emulator = load(; dir = init_dir, file = "emulator.jld2")
+    emulator = NeuralLongwave.load(; dir = init_dir, file = "emulator.jld2")
 
     check_continuation(emulator, c)
     @info "Continuing from $(init_dir)!"

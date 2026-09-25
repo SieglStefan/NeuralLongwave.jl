@@ -22,9 +22,8 @@ TINY = (;
     weather_n_starts     = 2,
     weather_field_days   = [1, 2],
 
-    climate_ic_subset    = 1:1,
-    climate_horizon_days = 61,      # 9 samples = one full lap = one window
-    climate_n_windows    = 1,
+    climate_restarts     = [(4, 1)],    # one trajectory
+    climate_n_years      = 1,       # one yearly mean (~10 min)
 )
 
 
@@ -47,11 +46,20 @@ SERIES = [
         TINY...,
     ),
 
-    # 2: Untrained ConstLW: ps = 0 
+    # 2: Untrained ConstLW: ps = 0
     (;
         unit        = "0_ConstLW",
         baseline    = :ConstLW,
         overwrite   = true,
         TINY...,
+    ),
+
+    # 3: Target scheme from perturbed start states - climate noise floor
+    (;
+        unit               = "0_OBLW_pert",
+        baseline           = :OBLW,
+        overwrite          = true,
+        TINY...,
+        climate_fac_pert_T = 0.02f0,
     ),
 ]

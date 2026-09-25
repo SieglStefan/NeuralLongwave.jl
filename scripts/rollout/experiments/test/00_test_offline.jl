@@ -21,9 +21,8 @@ TINY = (;
     weather_n_starts     = 2,
     weather_field_days   = [1, 2],
 
-    climate_ic_subset    = 1:1,
-    climate_horizon_days = 61,      # 9 samples = one full lap = one window
-    climate_n_windows    = 1,
+    climate_restarts     = [(4, 1)],    # one trajectory
+    climate_n_years      = 1,       # one yearly mean (~10 min)
 )
 
 

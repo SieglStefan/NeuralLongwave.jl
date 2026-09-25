@@ -1,6 +1,6 @@
 ### Training defaults
 ###
-### Every key a training unit may set, as blocks. A series file stacks one block per section:
+### Defaults for specific problems are merged together later, e.g.:
 ###
 ###     DEFAULTS = merge(base_defaults(), oblw_defaults(), offline_defaults(), neurallw_defaults())
 ###
@@ -43,7 +43,7 @@ base_defaults() = (;
 
 
     # Learning parameters
-    eta0            = 1f-2,                     # initial learning rate
+    eta0            = 1f-3,                     # initial learning rate
     eta_decay       = 0.9f0,                    # learning rate decay factor
     clip_norm       = 1f0,                      # gradient clipping norm
     weight_decay    = 0f0,                      # weight decay factor
@@ -59,9 +59,6 @@ base_defaults() = (;
 
 
 ### 2) Target scheme (OBLW / ABR)
-###
-### Every key that depends on the target scheme lives here, so switching the target is switching
-### ONE block. Some keys are only read by one mode (marked), the other mode ignores them.
 
 # OneBandLongwave target
 oblw_defaults() = (;
@@ -73,7 +70,7 @@ oblw_defaults() = (;
     # Radiation constants (of the target and the emulator)
     em_ocean        = 0.98f0,                   # ocean emissivity
     em_land         = 0.98f0,                   # land emissivity
-    co2             = 280f0,                    # CO2 concentration in ppm (emulator only, OBLW has none)
+    co2             = 280f0,                    # CO2 concentration in ppm
 
 
     # Data of the target scheme
@@ -89,7 +86,7 @@ oblw_defaults() = (;
 
 
 
-# AnalyticBandRadiation target (its recipe in utils_scheme.jl is still a stub)
+# AnalyticBandRadiation target
 abr_defaults() = (;
 
     # Target scheme (online: trained against it, offline: only stored in info.toml)
@@ -142,7 +139,7 @@ offline_defaults() = (;
 
 
     # Training loop
-    n_epochs        = 20,                       # number of epochs
+    n_epochs        = 50,                       # number of epochs
     n_batches       = 100,                      # number of batches per epoch
     batchsize       = 1024,                     # training batch size (samples per update)
 )

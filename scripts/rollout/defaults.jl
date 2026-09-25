@@ -1,6 +1,6 @@
 ### Rollout defaults
 ###
-### Every key a rollout unit may set, as blocks. A series file stacks the blocks it needs:
+### Defaults for specific problems are merged together later, e.g.:
 ###
 ###     DEFAULTS = merge(base_defaults(), oblw_defaults(), weather_defaults(), climate_defaults())
 ###
@@ -9,6 +9,7 @@
 ###         - 1) Base
 ###         - 2) Target scheme (OBLW / ABR)
 ###         - 3) Legs (weather / climate)
+###         - 4) Task split (split_tasks: weather and climate as separate tasks, run in parallel)
 
 
 
@@ -52,9 +53,6 @@ base_defaults() = (;
 
 
 ### 2) Target scheme (OBLW / ABR)
-###
-### Every key that depends on the target scheme lives here, so switching the target is switching
-### ONE block. The reference scheme of a leg is only read if that leg is stacked.
 
 # OneBandLongwave target
 oblw_defaults() = (;
@@ -70,9 +68,9 @@ oblw_defaults() = (;
     zscore_unit          = "default",           # unit of the used zscore statistics
 
 
-    # Reference raw data
+    # Reference raw data and restart states
     weather_raw_scheme   = "OBLW",              # scheme of the weather reference raw data
-    climate_raw_scheme   = "OBLW",              # scheme of the climate reference raw data
+    climate_restart_scheme = "OBLW",            # scheme of the climate restart states
 )
 
 
@@ -91,9 +89,9 @@ abr_defaults() = (;
     zscore_unit          = "default",           # unit of the used zscore statistics
 
 
-    # Reference raw data
+    # Reference raw data and restart states
     weather_raw_scheme   = "ABR",               # scheme of the weather reference raw data
-    climate_raw_scheme   = "ABR",               # scheme of the climate reference raw data
+    climate_restart_scheme = "ABR",             # scheme of the climate restart states
 )
 
 
@@ -125,17 +123,58 @@ weather_defaults() = (;
 
 
 
-# Long rollouts, reduced to drift curves (global means) and bias maps (time means per window)
+# Long rollouts from restart states, reduced to drift curves (global means) and yearly mean maps
 climate_defaults() = (;
 
-    # Reference raw dataset (must be sampled WITH precession, so the time means are true 24 h means)
-    climate_raw_series   = "03_reference",      # series of the reference raw data
-    climate_raw_unit     = "climate",           # unit of the reference raw data
+    # Restart states (restart ICs 1-2 are used for training, 3-5 are free for evaluation)
+    climate_model_type     = PrimitiveWetModel,     # SW model
+    climate_restart_unit   = "default",             # unit of the restart states
+    climate_restarts       = [(ic, j) for ic in (4, 5) for j in (1, 3, 5, 7, 9, 11)],  # (restart IC, state): one trajectory each
 
 
     # Leg settings
-    climate_ic_subset    = 1:4,                 # reference ICs to start from - one trajectory each
-    climate_probes       = CLIMATE_PROBES,      # fields the rollout is judged on
-    climate_horizon_days = 3*366,               # rollout length in days (366 d = 54 samples = one window)
-    climate_n_windows    = 3,                   # number of averaging windows (3 = one per year)
+    climate_probes         = CLIMATE_PROBES,    # fields the rollout is judged on
+    climate_n_years        = 3,                 # rollout length in years (one mean map per year, year 1 = adjustment)
+    climate_year_days      = 366,               # length of one averaging "year" in days (shorter only for tests)
+    climate_sample_hours   = 24f0,              # nominal sampling cadence in hours
+    climate_phase_shift    = -1,                # precessing through the diurnal cycle (true 24 h means)
+    climate_fac_pert_T     = 0f0,               # start state perturbation (0_OBLW_pert: 0.02)
 )
+
+
+
+
+
+
+
+
+
+
+### 4) Task split
+
+# Split every unit into two parallel tasks: the weather leg and the climate leg. Both write into the
+# same rollout folder (weather.jld2, climate.jld2).
+#   - e.g. SERIES = split_tasks(DEFAULTS, [(; unit = "0_OBLW", baseline = :OBLW), ...])
+function split_tasks(defaults, units)
+
+    tasks = NamedTuple[]
+    for u in units
+
+        # Legs of this unit (a leg runs only if its block was stacked and not switched off)
+        c = merge(defaults, u)
+        has_weather = haskey(c, :weather_raw_unit) && c.weather_n_starts > 0
+        has_climate = haskey(c, :climate_n_years)  && c.climate_n_years  > 0
+
+        # Weather leg: one task, climate switched off
+        if has_weather
+            push!(tasks, has_climate ? merge(u, (; climate_n_years = 0)) : u)
+        end
+
+        # Climate leg: one task, weather switched off
+        if has_climate
+            push!(tasks, has_weather ? merge(u, (; weather_n_starts = 0)) : u)
+        end
+    end
+
+    return tasks
+end

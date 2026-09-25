@@ -6,6 +6,7 @@
 #   bash scripts/launch.sh raw_data OBLW  03_reference             # all units
 #   bash scripts/launch.sh training test  00_test_online    0-1    # a subset
 #   bash scripts/launch.sh rollout  test  00_test_baselines 1      # a single unit
+#   bash scripts/launch.sh timing   exp_B 01_NLW_MLP_offline       # one exclusive job, all units
 #
 # <group> is the scheme for raw_data (schemes/<SCHEME>/) and the experiment for training and
 # rollout (experiments/<EXPERIMENT>/). Without ARRAY, every unit of the series file is submitted.
@@ -26,7 +27,8 @@ case "$STAGE" in
     raw_data) PREFIX="raw";   GROUP_DIR="schemes";     GROUP_VAR="SCHEME"     ;;
     training) PREFIX="train"; GROUP_DIR="experiments"; GROUP_VAR="EXPERIMENT" ;;
     rollout)  PREFIX="roll";  GROUP_DIR="experiments"; GROUP_VAR="EXPERIMENT" ;;
-    *) echo "Unknown stage: $STAGE (raw_data, training or rollout)" >&2; exit 1 ;;
+    timing)   PREFIX="time";  GROUP_DIR="experiments"; GROUP_VAR="EXPERIMENT" ;;
+    *) echo "Unknown stage: $STAGE (raw_data, training, rollout or timing)" >&2; exit 1 ;;
 esac
 
 DEFAULTS_FILE="scripts/$STAGE/defaults.jl"
@@ -34,8 +36,10 @@ SERIES_FILE="scripts/$STAGE/$GROUP_DIR/$GROUP/$SERIES.jl"
 
 [[ -f "$SERIES_FILE" ]] || { echo "No such series file: $SERIES_FILE" >&2; exit 1; }
 
-# Array: given explicitly, or every unit of the series file
-if [[ $# -ge 4 ]]; then
+# Array: given explicitly, or every unit of the series file (timing: ONE job times all units)
+if [[ "$STAGE" == "timing" ]]; then
+    ARRAY=0
+elif [[ $# -ge 4 ]]; then
     ARRAY=$4
 else
     N=$(julia --project=. -e '
