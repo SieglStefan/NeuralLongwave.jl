@@ -9,9 +9,9 @@
 ### Analysed in evaluation/set_OBLW/01_restart_states.ipynb and 02_spinup.ipynb.
 ###
 ### Stages, in this order (the error growth runs start from the restart states):
-###     1) raw_data 0       bash scripts/launch.sh raw_data OBLW 01_setup 0       spinup runs, 10 years
+###     1) raw_data 0-4     bash scripts/launch.sh raw_data OBLW 01_setup 0-4     spinup runs, 10 years (one job per run)
 ###     2) derive   0       bash scripts/launch.sh derive   OBLW 01_setup 0       derive restart states
-###     3) raw_data 1-3     bash scripts/launch.sh raw_data OBLW 01_setup 1-3     error growth runs
+###     3) raw_data 5-7     bash scripts/launch.sh raw_data OBLW 01_setup 5-7     error growth runs
 ###     4) derive   1-2     bash scripts/launch.sh derive   OBLW 01_setup 1-2     spinup statistics, error growth
 
 
@@ -38,26 +38,27 @@ SERIES = (;
 
     raw_data = [
 
-        # 0: Spinup runs - 5 trajectories from the SW default initial state (trajectory k = run k)
-        (;
+        # 0-4: Spinup runs - one job per run, 5 trajectories from the SW default initial state (trajectory k = run k)
+        [(;
             unit            = "01_restart_states",
             data_type       = :general,
             base_seed       = 0,                        # seeds 1...5
             starts          = fill(:default, 5),
+            only_traj       = k,
 
             start_date      = DateTime(2000, 1, 1),
 
             sim_days        = 10*365,
             sample_hours    = 7*24,
             phase_shift     = -1,
-        ),
+        ) for k in 1:5]...,
 
 
-        # 1-3: Error growth over 120 days - 5 perturbed copies of the restart state (1, 4j)
+        # 5-7: Error growth over 120 days - 5 perturbed copies of the restart state (1, 4j)
         [(;
             unit            = REPS_120[j],
             data_type       = :general,
-            base_seed       = 200 + 10*j,               # seeds e.g. 211...213
+            base_seed       = 100 + 10*j,               # seeds e.g. 111...113
             starts          = fill((1, 4*j), 5),
 
             sim_days        = 120,

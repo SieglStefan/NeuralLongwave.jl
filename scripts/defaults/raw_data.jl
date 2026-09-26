@@ -34,7 +34,7 @@ raw_base() = (;
     #   - (run, season): a restart state (see scripts/defaults/restarts.jl)
     #   - :default:      the SpeedyWeather default initial state (only for the spinup itself)
     starts          = [],                       # start state of every trajectory
-
+    only_traj       = nothing,                  # nothing = all trajectories in this task, a number = only this one (one job per trajectory, in parallel)
 
     # Spectral grid
     truncation      = 32,                       # truncation of the spectral grid

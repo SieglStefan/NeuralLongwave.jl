@@ -16,8 +16,9 @@ function stage_raw_data(c, job)
     # Set seed for reproducibility
     Random.seed!(c.base_seed)
 
-    # Create output folder
-    dir = prepare_out_dir(raw_data_dir(scheme, job.series, c.unit); overwrite = c.overwrite)
+    # Create output folder - a single-trajectory task shares it with the other trajectories, so it is never cleared
+    dir = isnothing(c.only_traj) ? prepare_out_dir(raw_data_dir(scheme, job.series, c.unit); overwrite = c.overwrite) :
+                                   mkpath(raw_data_dir(scheme, job.series, c.unit))
 
 
     # Spectral grid
@@ -32,6 +33,9 @@ function stage_raw_data(c, job)
     isempty(c.starts) && error("Raw data task $(c.unit) has no starts - list one start state per trajectory!")
 
     for (traj, start) in enumerate(c.starts)
+
+        # Check if only one traj is requested
+        isnothing(c.only_traj) || traj == c.only_traj || continue
 
         generate_raw_data(
             traj           = traj,
@@ -65,7 +69,7 @@ function stage_raw_data(c, job)
     # Create and store info.toml file
     write_info(;
         dir        = dir,
-        file       = "info.toml",
+        file       = isnothing(c.only_traj) ? "info.toml" : "info_traj_$(lpad(c.only_traj, 2, '0')).toml",
         job        = job,
         provenance = provenance(),
         config     = c,
