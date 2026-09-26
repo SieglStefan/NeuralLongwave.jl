@@ -42,9 +42,11 @@ using LinearAlgebra
 include(joinpath(@__DIR__, "series_loader.jl"))
 
 # One function per stage: stage_<name>(config, job) - timing gets ALL configs of the series at once
-for stage_file in ("raw_data", "derive", "training", "rollout", "timing")
-    include(joinpath(@__DIR__, "stages", stage_file * ".jl"))
-end
+include(joinpath(@__DIR__, "stages", "raw_data.jl"))
+include(joinpath(@__DIR__, "stages", "derive.jl"))
+include(joinpath(@__DIR__, "stages", "training.jl"))
+include(joinpath(@__DIR__, "stages", "rollout.jl"))
+include(joinpath(@__DIR__, "stages", "timing.jl"))
 
 # Job description handed to every stage function
 job = (; stage = job_stage, kind = job_kind, group = job_group, series = job_series, unit = job_unit)

@@ -36,9 +36,11 @@ job_unit   = parse(Int, get(ENV, "UNIT", "0"))
 include(joinpath(@__DIR__, "defaults", "restarts.jl"))
 
 # Include all default blocks of every stage (series files need it)
-for stage_file in ("raw_data", "derive", "training", "rollout", "timing")
-    include(joinpath(@__DIR__, "defaults", stage_file * ".jl"))
-end
+include(joinpath(@__DIR__, "defaults", "raw_data.jl"))
+include(joinpath(@__DIR__, "defaults", "derive.jl"))
+include(joinpath(@__DIR__, "defaults", "training.jl"))
+include(joinpath(@__DIR__, "defaults", "rollout.jl"))
+include(joinpath(@__DIR__, "defaults", "timing.jl"))
 
 # Helpers for building the task lists of a series file
 names_only(units) = [(; unit = u.unit) for u in units]      # trained units reduced to their names (rollout, timing)
@@ -61,7 +63,7 @@ job_kind = isfile(target_file)     ? :target     :
            isfile(experiment_file) ? :experiment :
            error("No series file $(job_group)/$(job_series).jl in scripts/targets/ or scripts/experiments/")
 
-include(job_kind === :target ? target_file : experiment_file)
+Base.include(@__MODULE__, job_kind === :target ? target_file : experiment_file)
 
 
 
