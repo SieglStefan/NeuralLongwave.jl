@@ -32,8 +32,8 @@ zscore_dir(scheme, unit)            = joinpath(ROOT, "data", "zscore", scheme, u
 # Results folder paths
 emulator_dir(experiment, series, unit)  = joinpath(ROOT, "results", experiment, series, unit, "emulator")       # trained emulators
 rollout_dir(experiment, series, unit)   = joinpath(ROOT, "results", experiment, series, unit, "rollout")        # generated rollouts
-timing_dir(experiment, series)          = joinpath(ROOT, "results", experiment, series, "timing")             # runtime of all units of a series (one job)
-    
+timing_dir(experiment, series)          = joinpath(ROOT, "results", experiment, series, "timing")               # runtime of all units of a series (one job)
+reference_dir(scheme, name)             = joinpath(ROOT, "results", scheme, name)                               # reference runs of a target scheme (climate_ref, climate_noise, grey, spinup, ...)
 
 
 
@@ -115,13 +115,18 @@ function load_run(dir)
     return (; train, val)
 end
 
+# Utility function for loading one reference artifact of a target scheme, e.g. ("OBLW", "climate_noise", "climate.jld2")
+load_reference(scheme, name, file) = load(; dir = reference_dir(scheme, name), file)
+
+# Utility function for loading the timing of a series (all units were timed in one job, one file)
+load_timings(experiment, series) = load(; dir = timing_dir(experiment, series), file = "timing.jld2")
+
 
 
 # Utility function for collecting training run data
 collect_runs(experiment, series, units) = (; 
     (Symbol(unit) => load_run(emulator_dir(experiment, series, unit)) for unit in units)...
 )
-
 # Utility function for collecting emulators
 collect_emulators(experiment, series, units) = (; 
     (Symbol(unit) => load(; dir = emulator_dir(experiment, series, unit), file = "emulator.jld2") for unit in units)...
@@ -131,9 +136,6 @@ collect_rollouts(experiment, series, units; leg = :weather) = (;
     (Symbol(unit) => load(; dir = rollout_dir(experiment, series, unit), file = "$(leg).jld2") for unit in units)...
 )
 
-
-# Utility function for loading the timing of a series (all units were timed in one job, one file)
-load_timings(experiment, series) = load(; dir = timing_dir(experiment, series), file = "timing.jld2")
 
 
 # Write a figure at its true size: .pdf for the thesis (vector), .png for everything else

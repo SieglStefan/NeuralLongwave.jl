@@ -52,14 +52,14 @@ end
 
 # Checks if a weather rollout of the TARGET scheme is exactly zero against its own reference over the whole rollout
 #   - anything else means, that there is an error in the rollout generation or related code
-#   - weather only: the climate leg stores no reference (it IS the reference, as the unit 0_OBLW)
+#   - weather only: the climate leg stores no reference (it IS the reference, OBLW/climate_ref)
 function test_reference(rollout; tol = 1f-6)
 
     # Only the weather leg has a stored reference
     rollout.leg === :weather || error("test_reference needs a weather rollout - the climate leg stores no reference")
 
     # One row per probe, all trajectories summarized
-    table = DataFrame(probe = Symbol[], max_error = Float64[], n_exact = Int[], n_traj = Int[], failed_ics = Vector{Int}[])
+    table = DataFrame(probe = Symbol[], max_error = Float64[], n_exact = Int[], n_traj = Int[], failed_trajs = Vector{Int}[])
 
     # Loop over probes
     for probe in rollout.probes
@@ -73,19 +73,19 @@ function test_reference(rollout; tol = 1f-6)
         # Select errors which are smaller than the given tolerance
         exact = traj_errors .<= tol
 
-        # Summary of the probe: largest error, number of exact trajectories and the ICs of the others
+        # Summary of the probe: largest error, number of exact trajectories and the reference trajectories of the others
         push!(table, (; probe,
                         max_error  = maximum(traj_errors),
                         n_exact    = count(exact),
                         n_traj     = length(exact),
-                        failed_ics = sort(unique(rollout.traj_ic[.!exact]))))
+                        failed_trajs = sort(unique(rollout.traj_raw[.!exact]))))
     end
 
     # Report the result
     if all(table.n_exact .== table.n_traj)
         @info "Reference reproduced exactly for every probe and trajectory."
     else
-        @warn "Reference NOT reproduced for IC $(sort(unique(reduce(vcat, table.failed_ics)))) - every score carries this offset."
+        @warn "Reference NOT reproduced for reference trajectory $(sort(unique(reduce(vcat, table.failed_trajs)))) - every score carries this offset."
     end
 
     return table
@@ -112,7 +112,7 @@ function weather_table(
                   weather_se         = weather_score.std / sqrt(weather_score.n_valid),
                   weather_rmse_early = weather_early.rmse,
                   weather_alive      = weather_score.n_valid,
-                  weather_n_traj     = length(ro_weather[unit].traj_ic))
+                  weather_n_traj     = length(ro_weather[unit].traj_raw))
     end)
 
     # A unit is dead if any of its trajectories died before the lead day
@@ -257,7 +257,7 @@ function plot_weather_growth(
         # One line per rollout
         for (i_unit, (unit, rollout)) in enumerate(pairs(rollouts))
             draw_curve!(ax, weather_growth(rollout, probe, metric), look_of(looks, unit, i_unit, style), style;
-                        n_traj = length(rollout.traj_ic))
+                        n_traj = length(rollout.traj_raw))
         end
 
         # RMSE cap last, so the cap sits on top

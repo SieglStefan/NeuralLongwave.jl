@@ -37,6 +37,10 @@ const FIELD_COLORS = (; T = JL_RED, olw = JL_BLUE, slwd = JL_GREEN, dT = JL_PURP
 
 
 ### 2) Styles
+###
+### Every *_style() starts from base_style() and lists ONLY what it changes or adds. Every field that
+### is not in base_style() is read by the plot functions named above the style.
+###     - keys a notebook may change via style = (; ...) must exist here (checked_merge)
 
 # Default look of every figure
 base_style() = (;
@@ -44,8 +48,8 @@ base_style() = (;
     width        = 1.0,         # figure width, as a fraction of the text width
     aspect       = 0.8,         # panel height / panel width
     ncols        = 3,           # panels per row
-    fontsize     = 11,          # every text, in pt
-    linewidth    = 1.2,         # in pt
+    fontsize     = 13,          # every text, in pt
+    linewidth    = 2,           # in pt
     legend       = :right,      # :bottom, :right or :none
     legend_cols  = 3,           # legend entries per row (legend = :bottom)
     markersize   = 7,           # in pt
@@ -53,19 +57,19 @@ base_style() = (;
 )
 
 
-# Raw data: plot_probes - one line per IC, so no legend
+# Raw data: plot_probes - one line per trajectory (pair), so no legend
 probes_style() = merge(base_style(), (;
-    legend = :none,
-    ncols = 2,
+    ncols  = 2,
     aspect = 0.6,
-    fontsize = 13,
-    linewidth = 2
+    legend = :none,
 ))
 
 
 # Dataset: plot_correlation
 correlation_style() = merge(base_style(), (;
     ncols       = 4,
+    fontsize    = 11,
+    linewidth   = 1.2,
     legend      = :none,
     n_points    = 3000,         # points drawn per panel (R^2 uses all of them)
     point_size  = 2,
@@ -76,6 +80,8 @@ correlation_style() = merge(base_style(), (;
 # Dataset: plot_hist
 hist_style() = merge(base_style(), (;
     ncols      = 4,
+    fontsize   = 11,
+    linewidth  = 1.2,
     legend     = :none,
     bins       = 30,
     hist_color = (JL_BLUE, 0.8),
@@ -84,51 +90,21 @@ hist_style() = merge(base_style(), (;
 
 # Training: plot_training
 training_style() = merge(base_style(), (;
-    ncols     = 3,
     aspect    = 1.0,
-    raw_alpha = 0.3,
-    fontsize = 13,
-    linewidth = 2,
+    raw_alpha = 0.3,            # unsmoothed curve behind the smoothed one
 ))
 
 
 # Training: plot_loss_shares (one run)
 shares_style() = merge(base_style(), (;
-    width  = 0.5,
-    ncols  = 1,
-    aspect    = 0.8,
-    fontsize = 13,
-    linewidth = 2,
+    width = 0.5,
+    ncols = 1,
 ))
 
 
 # Training: plot_rmse
 rmse_style() = merge(base_style(), (;
-    ncols  = 3,
-    aspect    = 1.0,
-    fontsize = 13,
-    linewidth = 2,
-))
-
-
-# Heatmaps: the colors of every lon/lat map and zonal section
-heatmap_style() = merge(base_style(), (;
-    legend             = :none,
-    signed_colormap    = :balance,      # bias, t-value
-    magnitude_colormap = :thermal,      # rmse, maxdiff
-    t_range            = 4,             # fixed color range ±t_range of t-value maps (comparable across figures)
-    highlight_color    = :magenta,      # cells beyond the t-quantile (not explained by chance)
-))
-
-
-# Maps: plot_climate_lonlat
-lonlat_style() = merge(heatmap_style(), (;
-    aspect          = 0.55,             # lon/lat panel plus its title
-    ticklabels      = false,            # lon/lat tick labels
-    coastline_width = 0.5,
-    fontsize = 13,
-    ncols      = 2,
-    textwidth_cm = 30.0,
+    aspect = 1.0,
 ))
 
 
@@ -136,9 +112,7 @@ lonlat_style() = merge(heatmap_style(), (;
 growth_style() = merge(base_style(), (;
     band       = true,          # uncertainty of the mean curve
     band_alpha = 0.15,
-    fontsize = 13,
-    linewidth = 2,
-    band_kind = :se,            # ± standard error (many trajectories)
+    band_kind  = :se,           # ± standard error (many trajectories)
 ))
 
 
@@ -147,17 +121,21 @@ profile_style() = merge(base_style(), (;
     aspect     = 1.3,           # tall panels, the vertical axis is the atmosphere
     band       = false,         # trajectory spread as error bars
     markersize = 5,
-    fontsize = 13,
-    linewidth = 2,
 ))
 
 
-# Sections: plot_weather_zonal, plot_climate_zonal
-zonal_style() = merge(heatmap_style(), (;
-    aspect = 0.6,
-    fontsize = 13,
-    ncols      = 2,
-    textwidth_cm = 20.0,
+# Weather-cost plane: plot_weather_cost_plane (weather RMSE against runtime)
+weather_cost_style() = merge(base_style(), (;
+    width       = 0.8,
+    ncols       = 1,
+    fontsize    = 16,
+    markersize  = 15,
+    errorbars   = true,         # ± SE (RMSE) and 25 - 75 % quantile (runtime)
+    zero_line   = false,        # RMSE axis starts at 0, with a dashed line at RMSE = 0
+    y_log       = false,        # runtime axis logarithmic (true: 0.5 and 2 equally far from 1)
+    trace_color = :black,       # line through a group (nothing = the group's color)
+    trace_width = 1.5,
+    trace_alpha = 0.5,
 ))
 
 
@@ -165,29 +143,42 @@ zonal_style() = merge(heatmap_style(), (;
 drift_style() = merge(base_style(), (;
     ncols      = 2,
     aspect     = 0.6,
-    band       = true,          # trajectory spread (bias only)
+    band       = true,          # trajectory spread
     band_alpha = 0.15,
-    fontsize = 13,
-    linewidth = 2,
-    band_kind = :minmax,        # range of the trajectories (few trajectories)
+    band_kind  = :minmax,       # range of the trajectories (few trajectories)
 ))
 
 
-# Weather-cost plane: plot_weather_cost_plane (weather RMSE against runtime)
-weather_cost_style() = merge(base_style(), (;
-    textwidth_cm = 45.0,
-    width       = 0.8,
-    ncols       = 1,
-    legend      = :right,
-    trace_color = :black,      # line through a group (nothing = the group's color)
-    trace_width = 1.5,
-    trace_alpha = 0.5,
-    fontsize = 16,
-    x_from_zero = false,
-    y_log       = false,        # runtime axis logarithmic (true: 0.5 and 2 equally far from 1)
-    errorbars   = false,
-    linewidth = 2,
-    markersize   = 15,           # in pt
+# Climate: plot_climate_bias
+bias_style() = merge(base_style(), (;
+    ncols      = 2,
+    legend     = :none,         # units are on the y-axis
+    markersize = 10,
+))
+
+
+# Heatmaps: the colors of every lon/lat map and zonal section (base of lonlat_style and zonal_style)
+heatmap_style() = merge(base_style(), (;
+    legend             = :none,
+    signed_colormap    = :balance,      # bias
+    magnitude_colormap = :thermal,      # rmse, maxdiff
+))
+
+
+# Maps: plot_lonlat
+lonlat_style() = merge(heatmap_style(), (;
+    ncols           = 2,
+    aspect          = 0.55,             # lon/lat panel plus its title
+    ticklabels      = false,            # lon/lat tick labels
+    coastline_width = 0.5,
+))
+
+
+# Sections: plot_zonal (plot_weather_zonal, plot_climate_zonal)
+zonal_style() = merge(heatmap_style(), (;
+    textwidth_cm = 20.0,
+    ncols        = 2,
+    aspect       = 0.6,
 ))
 
 

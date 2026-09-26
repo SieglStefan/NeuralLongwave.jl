@@ -47,7 +47,7 @@ function generate_rollout(;
         w = rollout_weather(scheme; weather...)
         save(w; dir, file = "weather.jld2")
         @info "Weather leg stored at $(dir)!"
-        (; n_traj = length(w.traj_ic), horizon_days = last(w.days))
+        (; n_traj = length(w.traj_raw), horizon_days = last(w.days))
     end
 
     # Climate leg
@@ -57,7 +57,7 @@ function generate_rollout(;
         c = rollout_climate(scheme; climate...)
         save(c; dir, file = "climate.jld2")
         @info "Climate leg stored at $(dir)!"
-        (; n_traj = length(c.traj_ic), horizon_days = last(c.days), survived_days = c.survived_days)
+        (; n_traj = length(c.traj_run), horizon_days = last(c.days), survived_days = c.survived_days)
     end
 
 
@@ -80,16 +80,18 @@ end
 function rollout_weather(
     scheme;             # scheme to roll out
     raw_dir,            # reference raw dataset
-    ic_subset,          # reference ICs to start from
+    trajs,              # reference raw data trajectories to start from
     probes,             # fields the rollout is judged on
     horizon_days,       # forecast length in days
-    n_starts,           # number of start states PER IC
+    n_starts,           # number of start states PER reference trajectory
     field_days,         # lead days for which entire fields are stored (e.g. for heatmaps)
+    fac_pert_T,         # additive temperature perturbation of every start state (0 = none)
+    seed,               # seed of the perturbation
 )
 
 
     # Read reference metadata
-    meta = with_raw_data(raw_dir, first(ic_subset)) do d
+    meta = with_raw_data(raw_dir, first(trajs)) do d
         (; d.spectral_grid, d.model_type, d.n_states, d.gap_steps, d.steps_per_day)
     end
 
@@ -117,7 +119,7 @@ function rollout_weather(
         error("last start $(last(starts_sampled)) + horizon $(horizon_sampled) exceeds the reference ($(meta.n_states - 1) samples)!")
 
     # Number of total trajectories
-    n_traj = length(ic_subset) * n_starts
+    n_traj = length(trajs) * n_starts
 
 
 
@@ -137,8 +139,8 @@ function rollout_weather(
     # Create containers for the fields of the scheme and the reference
     field_run, field_ref = map(field, probe_layers), map(field, probe_layers)
 
-    # Labels of the trajectory axis, encoding every trajectory with (ic, start sample)
-    traj_ic, traj_start = Int[], Int[]
+    # Labels of the trajectory axis, encoding every trajectory with (reference trajectory, start sample)
+    traj_raw, traj_start = Int[], Int[]
 
 
 
@@ -146,11 +148,11 @@ function rollout_weather(
     i_traj = 0
 
     ### Main loop: roll out every trajectory, scoring each lead sample as it is reached
-    # Loop over ICs
-    for ic in ic_subset
-        with_raw_data(raw_dir, ic) do d
+    # Loop over reference trajectories
+    for raw in trajs
+        with_raw_data(raw_dir, raw) do d
 
-            # State the reference built its semi-implicit operators from, read once per IC
+            # State the reference built its semi-implicit operators from, read once per reference trajectory
             state0 = d[0]
 
 
@@ -159,7 +161,7 @@ function rollout_weather(
 
                 # Count and label this trajectory
                 i_traj += 1
-                push!(traj_ic, ic)
+                push!(traj_raw, raw)
                 push!(traj_start, s)
 
 
@@ -170,6 +172,17 @@ function rollout_weather(
                 # Build the implicit operators from state0 (as the reference did), then overwrite the prognostic state with start sample s
                 restart_from!(sim, state0, 0)
                 copy!(sim.variables, d[s])
+
+                
+                # Optional start perturbation: the same grid noise added to both leapfrog steps
+                #   - not perturb_grid_field!: its initialize! would restart the mid-run state
+                if fac_pert_T > 0
+                    rng = Random.Xoshiro(hash((seed, raw, s)))
+                    noise = fac_pert_T .* randn!(rng, similar(SpeedyWeather.get_step(sim.variables.grid.temperature)))
+                    for step in 1:2
+                        SpeedyWeather.set!(sim; temperature = noise, step, add = true)
+                    end
+                end
 
 
                 # Index counter for stored fields
@@ -217,7 +230,7 @@ function rollout_weather(
                     end
                 end
 
-                @info "Weather rollout $(i_traj)/$(n_traj) finished! (IC $(ic), start sample $(s))"
+                @info "Weather rollout $(i_traj)/$(n_traj) finished! (reference trajectory $(raw), start sample $(s))"
             end
         end
     end
@@ -232,6 +245,7 @@ function rollout_weather(
     return (;
         # Identity
         leg             = :weather,
+        fac_pert_T      = Float32(fac_pert_T),
         raw_dir         = raw_dir,
         spectral_grid   = meta.spectral_grid,
         probes          = keys(probes),
@@ -243,7 +257,7 @@ function rollout_weather(
         days            = days,                       # (horizon_samples,) lead time of every sample
 
         # Trajectory axis
-        traj_ic,                                      # (n_traj,) reference IC of every trajectory
+        traj_raw,                                     # (n_traj,) reference trajectory every trajectory started from
         traj_start,                                   # (n_traj,) start sample of every trajectory
 
         # Scores: (; T = (; rmse, bias, maxdiff), olw = ...), each (horizon_samples, layer, n_traj)
@@ -273,7 +287,7 @@ function rollout_climate(
     model_type,             # SpeedyW model (e.g. PrimitiveWetModel)
     restart_scheme,         # scheme folder of the restart states
     restart_unit,           # unit folder of the restart states
-    restarts,               # (restart IC, state) pairs to start from - one trajectory each
+    restarts,               # (run, season) restart states to start from - one trajectory each
     probes,                 # fields the rollout is judged on
     n_years,                # rollout length in years (one time-mean map per year)
     year_days,              # length of one averaging year in days (366, shorter only for tests)
@@ -320,14 +334,14 @@ function rollout_climate(
 
 
     ### Main loop: one long trajectory per restart
-    for (i_traj, (ic, j)) in enumerate(restarts)
+    for (i_traj, (run, season)) in enumerate(restarts)
 
-        # Fresh simulation, loaded with state j of restart IC ic
+        # Fresh simulation, loaded with the restart state (run, season)
         sim = initialize!(model_type(spectral_grid; longwave_radiation = scheme))
-        restart_from!(sim, restart_state(restart_scheme, restart_unit, ic, j), 0)
+        restart_from!(sim, restart_state(restart_scheme, restart_unit, run, season), 0)
 
-        # Optional perturbation (for noise floor run), seeded by the restart state IC and number
-        fac_pert_T > 0 && perturb_grid_field!(sim, :temperature; fac_add = fac_pert_T, rng = Random.Xoshiro(seed + 100*ic + j))
+        # Optional perturbation (for noise floor run), seeded by the restart state
+        fac_pert_T > 0 && perturb_grid_field!(sim, :temperature; fac_add = fac_pert_T, rng = Random.Xoshiro(seed + 100*run + season))
 
         # Start the time stepping (leapfrog start + implicit operators built from the loaded state)
         spinup_leapfrog!(sim; total_steps = n_samples * gap_steps)
@@ -346,7 +360,7 @@ function rollout_climate(
             # Stop this trajectory and warn user if the run blew up, everything after stays NaN
             if !isfinite(sum(SpeedyWeather.get_step(sim.variables.grid.temperature)))
                 survived[i_traj] = l - 1
-                @warn "Climate rollout $(i_traj) (restart IC $(ic), state $(j)) went non-finite at day $(round(days[l], digits=1)) - trajectory stopped."
+                @warn "Climate rollout $(i_traj) (restart state ($(run), $(season))) went non-finite at day $(round(days[l], digits=1)) - trajectory stopped."
                 break
             end
 
@@ -383,7 +397,7 @@ function rollout_climate(
         end
 
         # Print information about the completed trajectory
-        @info "Climate rollout $(i_traj)/$(n_traj) finished! (restart IC $(ic), state $(j), survived $(round(days[max(survived[i_traj],1)], digits=1)) days)"
+        @info "Climate rollout $(i_traj)/$(n_traj) finished! (restart state ($(run), $(season)), survived $(round(days[max(survived[i_traj],1)], digits=1)) days)"
     end
 
 
@@ -407,8 +421,8 @@ function rollout_climate(
         days             = days,                    # (n_samples,) time of every sample
 
         # Trajectory axis
-        traj_ic          = [ic for (ic, j) in restarts],    # (n_traj,) restart IC of every trajectory
-        traj_j           = [j for (ic, j) in restarts],     # (n_traj,) restart state of every trajectory
+        traj_run         = [run for (run, season) in restarts],       # (n_traj,) restart run of every trajectory
+        traj_season      = [season for (run, season) in restarts],    # (n_traj,) restart season of every trajectory
         survived_samples = survived,                        # (n_traj,) last finite sample (= n_samples if stable)
         survived_days    = Float32.(survived .* gap_days),  # (n_traj,)
 

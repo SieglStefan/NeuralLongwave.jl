@@ -1,6 +1,6 @@
 ### Raw data evaluation
 ###
-### Global means, RMSE distances between ICs and error growth statistics 
+### Global means, RMSE distances between trajectories and error growth statistics
 ### of a raw dataset
 ###         - 1) Processing
 ###         - 2) Error growth
@@ -8,8 +8,8 @@
 ###
 ### Possible evaluations include: (over all points and layers)
 ###         - Global means (metric = :mean)
-###         - RMSE distances between ICs (metric = :rmse)
-###         - Error growth statistics (mean, std over IC pairs)
+###         - RMSE distances between trajectories (metric = :rmse)
+###         - Error growth statistics (mean, std over trajectory pairs)
 
 
 
@@ -34,11 +34,11 @@ function sample_axis(data)
 end
 
 
-# Area weighted global mean of every probe at every stored state of one IC
+# Area weighted global mean of every probe at every stored state of one trajectory
 #   - means[probe] is a timeseries one value per stored state
-function global_means(raw_dir, ic; probes = keys(PROBES))
+function global_means(raw_dir, traj; probes = keys(PROBES))
 
-    with_raw_data(raw_dir, ic) do data
+    with_raw_data(raw_dir, traj) do data
 
         # Area weights (npoints) and one container per probe
         aw = area_weights(data.spectral_grid)
@@ -57,18 +57,18 @@ function global_means(raw_dir, ic; probes = keys(PROBES))
 end
 
 
-# Area weighted RMSE between IC a and IC b at every stored state
+# Area weighted RMSE between trajectory a and trajectory b at every stored state
 #   - distances[probe] is a timeseries with one value per stored state
-function ic_distance(raw_dir_a, raw_dir_b, ic_a, ic_b; probes = keys(PROBES))
+function traj_distance(raw_dir_a, raw_dir_b, traj_a, traj_b; probes = keys(PROBES))
 
-    with_raw_data(raw_dir_a, ic_a) do data_a
-        with_raw_data(raw_dir_b, ic_b) do data_b
+    with_raw_data(raw_dir_a, traj_a) do data_a
+        with_raw_data(raw_dir_b, traj_b) do data_b
 
             # Area weights (npoints) and one container per probe
             aw = area_weights(data_a.spectral_grid)
             distances = NamedTuple{Tuple(probes)}(Tuple(Float64[] for _ in probes))
 
-            # Both ICs share the same sampling times
+            # Both trajectories share the same sampling times
             for i_state in 0:data_a.n_states-1
                 state_a, state_b = data_a[i_state], data_b[i_state]
                 for probe in probes
@@ -94,15 +94,15 @@ end
 
 ### 2) Error growth
 ###
-### distances is a list of ic_distance results, one per IC pair
+### distances is a list of traj_distance results, one per trajectory pair
 
-# Saturated RMSE of every probe: mean over the tail (day > day_min), then mean and std over IC pairs
+# Saturated RMSE of every probe: mean over the tail (day > day_min), then mean and std over trajectory pairs
 function rmse_caps(distances, probes; day_min = 2500)
 
     # For each probe
     return NamedTuple{Tuple(probes)}(map(Tuple(probes)) do probe
 
-        # Calculate tail means of ic_distance in distances for the current probe
+        # Calculate tail means of traj_distance in distances for the current probe
         tail_means = [mean(distance[probe][distance.days .> day_min]) for distance in distances]
 
         # Calculate mean and std of all the tail means
@@ -111,27 +111,27 @@ function rmse_caps(distances, probes; day_min = 2500)
 end
 
 
-# Mean error-growth curve of every probe: mean and std over IC pairs at every stored day
+# Mean error-growth curve of every probe: mean and std over trajectory pairs at every stored day
 function mean_curves(distances, probes)
 
     # For each probe
     return NamedTuple{Tuple(probes)}(map(Tuple(probes)) do probe
 
-        # (day, pair) - one column per IC pair, all pairs share the same days
+        # (day, pair) - one column per trajectory pair, all pairs share the same days
         curves_matrix = reduce(hcat, [distance[probe] for distance in distances])
 
-        # Mean and std (and rms, n_valid) over IC pairs at every day
+        # Mean and std (and rms, n_valid) over trajectory pairs at every day
         return (; days = first(distances).days, traj_stats(curves_matrix)...)
     end)
 end
 
 
 # Exponential growth rate λ [1/day] of one probe and the doubling time [days] that follows from it,
-#   - mean and std over IC pairs
+#   - mean and std over trajectory pairs
 #   - fit_days = (first day, last day) of the exponential fit
 function growth_rate(distances, probe; fit_days)
 
-    # Growth rate of every IC pair: slope of log(error) against time, inside the fit window
+    # Growth rate of every trajectory pair: slope of log(error) against time, inside the fit window
     rates = map(distances) do distance
 
         # Select days within the fit window
@@ -143,7 +143,7 @@ function growth_rate(distances, probe; fit_days)
         return rate
     end
 
-    # Doubling time of every IC pair
+    # Doubling time of every trajectory pair
     doubling_times = log(2) ./ rates
 
     return (; λ        = (; mean = mean(rates),          std = std(rates)),
@@ -163,7 +163,7 @@ end
 
 # Probe curves of raw-data results, one panel per probe, one line per result
 function plot_probes(
-    results,                    # global_means or ic_distance results
+    results,                    # global_means or traj_distance results
     probes;                     # probes, one panel each
     smooth_days = 0,            # running mean window in days (0 = raw curves only)
     yscale  = identity,         # identity or log10
@@ -180,7 +180,7 @@ function plot_probes(
     results = results isa NamedTuple ? [results] : results
 
     # All results must show the same metric, the y-label is taken from the first one
-    allequal(result.metric for result in results) || error("results mix metrics - plot global_means and ic_distance separately")
+    allequal(result.metric for result in results) || error("results mix metrics - plot global_means and traj_distance separately")
 
     # Extract number of panels and define figure
     n_panels = length(probes)

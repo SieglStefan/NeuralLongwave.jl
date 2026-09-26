@@ -40,8 +40,8 @@ end
 #   - train is a loaded run.train from a loaded train.csv (load_run())
 function block_ends(train)
 
-    # Block of every row: the IC online, the epoch offline
-    blocks = hasproperty(train, :ic) ? train.ic : train.epoch
+    # Block of every row: the start state online, the epoch offline
+    blocks = hasproperty(train, :start) ? train.start : train.epoch
 
     # Return x-positions of in between blocks (between blocks = blocks[row] != blocks[row+1])
     return [row + 0.5 for row in 1:length(blocks)-1 if blocks[row] != blocks[row+1]]

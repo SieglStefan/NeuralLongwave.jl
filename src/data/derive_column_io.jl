@@ -10,7 +10,7 @@
 ### where:
 ###     - npoints:          number of global columns (grid points)
 ###     - nlayers:          number of vertical layers
-###     - n_states_total:   total number of samples over all ics (1 state = 1 full global simulation.variables)
+###     - n_states_total:   total number of samples over all trajectories (1 state = 1 full global simulation.variables)
 
 
 
@@ -28,23 +28,23 @@ function derive_column_io(;
     raw_dir,                    # directory containing raw data
     scheme,                     # scheme folder for storing column IO data
     unit,                       # unit folder for storing
-    ic_subset,                  # initial conditions to process from raw data 
+    trajs,                      # raw data trajectories to process
 )
 
     # Extract inputs and outputs from raw data and column calls
-    column_io = create_column_io(raw_dir, ic_subset)
+    column_io = create_column_io(raw_dir, trajs)
 
     # Extract spectral grid
-    spectral_grid, model_type = with_raw_data(d -> (d.spectral_grid, d.model_type), raw_dir, first(ic_subset))
+    spectral_grid, model_type = with_raw_data(d -> (d.spectral_grid, d.model_type), raw_dir, first(trajs))
        
 
     # Dataset dimensions
     (; npoints, nlayers) = column_io.dims
     n_states_total = size(column_io.fields.dT, 3)
 
-    # Calculate number of states per IC and check for consistency
-    n_states_ic, rest = divrem(n_states_total, length(ic_subset))
-    rest == 0 || error("$(n_states_total) states over $(length(ic_subset)) ICs — not equally sized!")
+    # Calculate number of states per trajectory and check for consistency
+    n_states_traj, rest = divrem(n_states_total, length(trajs))
+    rest == 0 || error("$(n_states_total) states over $(length(trajs)) trajectories — not equally sized!")
 
 
     # Save column IO data
@@ -54,21 +54,21 @@ function derive_column_io(;
     # Write info and print log
     write_info(; dir,
         source          = raw_dir,                      # raw data used for creating column IO
-        ic_subset       = collect(ic_subset),           # subset of ICs used
-        n_ics           = length(ic_subset),            # number of ICs used
+        trajs           = collect(trajs),               # raw data trajectories used
+        n_trajs         = length(trajs),                # number of trajectories used
 
         npoints         = npoints,                      # grid columns per global state
         nlayers         = nlayers,                      # number of vertical layers
-        n_states_ic     = n_states_ic,                  # stored states per IC
-        n_states_total  = n_states_total,               # total number of stored states over all ICs
+        n_states_traj   = n_states_traj,                # stored states per trajectory
+        n_states_total  = n_states_total,               # total number of stored states over all trajectories
 
-        n_samples_ic    = npoints * n_states_ic,        # training samples one IC contributes
-        n_samples_total = npoints * n_states_total,     # ... and all ICs together
+        n_samples_traj  = npoints * n_states_traj,      # training samples one trajectory contributes
+        n_samples_total = npoints * n_states_total,     # ... and all trajectories together
     )
 
     # Print log
     @info "Column IO dataset $(scheme)_$(unit) stored at $(dir)! " *
-          "$(npoints * n_states_total) samples ($(npoints * n_states_ic) per IC)"
+          "$(npoints * n_states_total) samples ($(npoints * n_states_traj) per trajectory)"
 
     return nothing
 end
@@ -76,10 +76,10 @@ end
 
 
 # Extract column Inputs and Outputs from raw_data in shape (npoints, nlayers, n_states_total)
-function create_column_io(raw_dir, ic_subset)
+function create_column_io(raw_dir, trajs)
 
     # Rebuild simulation
-    sim = with_raw_data(raw_dir, first(ic_subset)) do d
+    sim = with_raw_data(raw_dir, first(trajs)) do d
         initialize!(d.model_type(d.spectral_grid; longwave_radiation = d.lw_scheme))
     end
 
@@ -92,8 +92,8 @@ function create_column_io(raw_dir, ic_subset)
     npoints, nlayers = size(vars.grid.temperature)
 
 
-    # Total number of samples over all ICs
-    n_states_total = sum(with_raw_data(d -> d.n_states, raw_dir, ic) for ic in ic_subset)
+    # Total number of samples over all trajectories
+    n_states_total = sum(with_raw_data(d -> d.n_states, raw_dir, traj) for traj in trajs)
 
     # Extract number of inputs and layouts
     n_in = n_inputs(INPUTS, nlayers)                # scalar
@@ -114,12 +114,12 @@ function create_column_io(raw_dir, ic_subset)
     ### Main loop: read every stored state and evaluate the target scheme on it
     idx = 1
 
-    # Loop over all chosen initial conditions
-    for ic in ic_subset
-        with_raw_data(raw_dir, ic) do d
+    # Loop over all chosen trajectories
+    for traj in trajs
+        with_raw_data(raw_dir, traj) do d
 
 
-            # Loop over all stored samples (full global variables of one specific sample time) per ic
+            # Loop over all stored samples (full global variables of one specific sample time) per trajectory
             for j in 0:d.n_states-1
 
                 # Load the stored state sample into the simulation
@@ -139,7 +139,7 @@ function create_column_io(raw_dir, ic_subset)
                 idx += 1
             end
 
-            @info "IC $(ic): $(d.n_states) states read!"
+            @info "Trajectory $(traj): $(d.n_states) states read!"
         end
     end
 
@@ -154,7 +154,7 @@ function create_column_io(raw_dir, ic_subset)
     return (;
         fields      = (; inputs..., dT, olw, slwd, slwu, F),
         dims        = (; npoints, nlayers, truncation = model.spectral_grid.truncation),
-        ic_subset   = collect(ic_subset),
+        trajs       = collect(trajs),
         source      = raw_dir,
     )
 end

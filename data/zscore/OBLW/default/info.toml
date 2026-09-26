@@ -1,9 +1,0 @@
-created = 2026-09-22T21:51:11.945Z
-forms = ["LinearOutput", "PlanckOutput"]
-ic_subset = [1, 2, 3, 4]
-julia = "1.10.11"
-nlayers = 8
-npoints = 3168
-source = "c:\\Code\\NeuralLongwave.jl\\data\\raw_data\\OBLW\\02_offline\\01_training_data"
-sw_vers = "0.22.1+DEV"
-truncation = 32

@@ -34,6 +34,14 @@ build_scheme(::Val{:OBLW}, SG; em_ocean = 0.98f0, em_land = 0.98f0, kwargs...) =
                                 emissivity_ocean = em_ocean,
                                 emissivity_land  = em_land))
 
+# Build a grey OneBandLongwave baseline: the same radiative transfer, but one constant transmissivity
+build_scheme(::Val{:GreyLW}, SG; em_ocean = 0.98f0, em_land = 0.98f0, grey_transmissivity = 0.6f0, kwargs...) =
+    OneBandLongwave(SG;
+        transmissivity     = ConstantLongwaveTransmissivity(SG; transmissivity = grey_transmissivity),
+        radiative_transfer = OneBandLongwaveRadiativeTransfer(SG;
+                                emissivity_ocean = em_ocean,
+                                emissivity_land  = em_land))
+
 # Build an AnalyticBandRadiation target scheme
 build_scheme(::Val{:ABR}, SG; em_ocean = 1f0, em_land = 1f0, kwargs...) = nothing
 
@@ -92,11 +100,16 @@ end
 
 ### 2) Scheme Information
 
-# Information about OneBandLongwave target
+# Information about a OneBandLongwave scheme (the OBLW target or the GreyLW baseline)
 function info_scheme(scheme::OneBandLongwave)
+
+    # Transmissivity type and its parameters (e.g. Frierson: τ₀_equator, τ₀_pole, fₗ / constant: transmissivity)
+    t = scheme.transmissivity
+
     return (;
         scheme          = "OneBandLongwave",
-        transmissivity  = string(nameof(typeof(scheme.transmissivity))),
+        transmissivity  = string(nameof(typeof(t))),
+        transmissivity_params = (; (name => getfield(t, name) for name in fieldnames(typeof(t)))...),
         em_ocean        = scheme.radiative_transfer.emissivity_ocean,
         em_land         = scheme.radiative_transfer.emissivity_land,
     )

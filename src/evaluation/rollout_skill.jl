@@ -10,14 +10,15 @@
 # Weather skill against runtime, one marker per unit (lower left = accurate and fast)
 #   - x: weather RMSE ± standard error (weather_table)
 #   - y: sweep time relative to the reference, error bar = 25 % - 75 % quantile of the per-round ratios (timing_table)
-#   - marker: filled = climate check passed (or not checked), hollow = failed (climate_table),
-#             black cross on top = a weather trajectory died (weather_table.dead)
+#   - marker: black cross on top = a weather trajectory died (weather_table.dead)
+#   - lines: runtime of the reference (dashed, y = 1), RMSE = 0 (dashed, style.zero_line),
+#            RMSE of a reference scheme (dotted, ref_rmse, e.g. the grey OBLW baseline)
 function plot_weather_cost_plane(
     skill,                                  # weather_table
     timing;                                 # timing_table of the same units
-    climate = nothing,                      # climate_table, or nothing (all markers filled)
+    ref_rmse = nothing,                     # weather RMSE of a reference scheme (e.g. OBLW/grey), nothing = no line
     looks   = nothing,                      # appearance per unit (group joins units with a thin line)
-    xlabel  = "Weather: 14-day RMSE T [K]",        # must match probe and day of the weather_table
+    xlabel  = "Weather: 14-day RMSE T [K]", 
     ylabel  = "Runtime Emulator / OBLW",
     title   = "",                           # figure title
     style   = (;),                          # entries of weather_cost_style() to change
@@ -31,8 +32,15 @@ function plot_weather_cost_plane(
     # One panel, runtime on a log axis if set (0.5 and 2 are equally far from 1)
     ax = panel(fig, style, 1, 1; xlabel, ylabel, yscale = style.y_log ? log10 : identity)
 
-    # Reference runtime (OBLW)
+
+    # Reference runtime (OBLW = 1)
     hlines!(ax, [1]; color = :gray, linestyle = :dash, linewidth = style.linewidth / 2)
+
+    # Perfect weather skill (RMSE = 0)
+    style.zero_line && vlines!(ax, [0]; color = :gray, linestyle = :dash, linewidth = style.linewidth / 2)
+
+    # Weather RMSE of a reference scheme
+    isnothing(ref_rmse) || vlines!(ax, [ref_rmse]; color = :black, linestyle = :dot, linewidth = style.linewidth / 2)
 
 
     # Collect position, error bars and look of every unit
@@ -43,16 +51,11 @@ function plot_weather_cost_plane(
         isnothing(i_timing) && error("Unit $(unit) is not in the timing table!")
         t = timing[i_timing, :]
 
-        # Climate check of the unit (a unit the table does not list counts as passed)
-        i_climate = isnothing(climate) ? nothing : findfirst(==(unit), climate.unit)
-        passed    = isnothing(i_climate) || climate.pass[i_climate]
-
         return (; x      = skill.weather_rmse[i_unit],
                   x_se   = skill.weather_se[i_unit],
                   y      = t.sweep_ratio,
                   y_lo   = t.sweep_ratio - t.sweep_ratio_lo,
                   y_hi   = t.sweep_ratio_hi - t.sweep_ratio,
-                  passed = passed,
                   dead   = skill.dead[i_unit],
                   look   = look_of(looks, unit, i_unit, style))
     end
@@ -75,17 +78,16 @@ function plot_weather_cost_plane(
             errorbars!(ax, [p.x], [p.y], [p.y_lo], [p.y_hi]; direction = :y, color = p.look.color)
         end
 
-        # Filled marker if the climate check passed, hollow otherwise
+        # Marker of the unit
         scatter!(ax, [p.x], [p.y]; marker = p.look.marker, markersize = p.look.markersize,
-                 color = p.passed ? p.look.color : :white, strokecolor = p.look.color,
-                 strokewidth = style.linewidth, label = p.look.label)
+                 color = p.look.color, label = p.look.label)
 
         # Black cross on top if a weather trajectory died
         p.dead && scatter!(ax, [p.x], [p.y]; color = :black, marker = :xcross, markersize = p.look.markersize)
     end
 
     # Weather RMSE axis starting at zero
-    style.x_from_zero && xlims!(ax, 0, nothing)
+    style.zero_line && xlims!(ax, 0, nothing)
 
     # Add legend and title to the figure
     add_legend!(fig, ax, style, 1, n_entries)

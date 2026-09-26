@@ -56,20 +56,20 @@ function setup_target(tc, emulator)
     # Throw a helpful error if the dataset was never generated
     isfile(joinpath(dir, file)) || error(
         "No column_io dataset at $(joinpath(dir, file)). Generate it with:\n" *
-        "    derive_column_io(; raw_dir = ..., scheme = \"$(tc.target_scheme)\", unit = \"$(tc.target_unit)\", ic_subset = ...)")
+        "    derive_column_io(; raw_dir = ..., scheme = \"$(tc.target_scheme)\", unit = \"$(tc.target_unit)\", trajs = ...)")
 
-    # Load stored target dataset and unpack the fields and the stored ics
+    # Load stored target dataset and unpack the fields and the stored trajectories
     data = load(; dir, file)
-    (; fields, ic_subset, spectral_grid, model_type) = data
+    (; fields, trajs, spectral_grid, model_type) = data
 
 
-    # Every requested IC has to be present in the stored dataset
-    absent = setdiff(tc.target_ics, ic_subset)
-    isempty(absent) || error("column_io dataset holds ICs $(ic_subset), unit requests $(collect(tc.target_ics)) - missing $(absent)!")
+    # Every requested trajectory has to be present in the stored dataset
+    absent = setdiff(tc.target_trajs, trajs)
+    isempty(absent) || error("column_io dataset holds trajectories $(trajs), unit requests $(collect(tc.target_trajs)) - missing $(absent)!")
 
-    # Extract number of states per IC and throw error if it is not equal among ICs
-    n_states_per_ic, rest = divrem(size(fields.T, 3), length(ic_subset))
-    rest == 0 || error("Target dataset has $(size(fields.T,3)) states over $(length(ic_subset)) ICs - not equally sized!")
+    # Extract number of states per trajectory and throw error if it is not equal among trajectories
+    n_states_per_traj, rest = divrem(size(fields.T, 3), length(trajs))
+    rest == 0 || error("Target dataset has $(size(fields.T,3)) states over $(length(trajs)) trajectories - not equally sized!")
 
 
     # Collect consts
@@ -77,18 +77,18 @@ function setup_target(tc, emulator)
     consts = (; center = emulator.zscore.center, flux_to_dT = flux_to_dT_fac(model))
 
 
-    # Sample indices one stored IC occupies (for example 1:100 for ic 1, 101:200 for ic 2, etc.)
-    block(ic) = (findfirst(==(ic), ic_subset) - 1) * n_states_per_ic .+ (1:n_states_per_ic)
+    # Sample indices one stored trajectory occupies (for example 1:100 for trajectory 1, 101:200 for trajectory 2, etc.)
+    block(traj) = (findfirst(==(traj), trajs) - 1) * n_states_per_traj .+ (1:n_states_per_traj)
 
-    # Split the requested ICs, validation holding out whole ICs (never single samples)
-    1 <= tc.n_ic_val < length(tc.target_ics) ||
-        error("n_ic_val = $(tc.n_ic_val) leaves none of the $(length(tc.target_ics)) requested ICs for training!")
-    ics_train = collect(tc.target_ics)[1 : end - tc.n_ic_val]
-    ics_val   = collect(tc.target_ics)[end - tc.n_ic_val + 1 : end]
+    # Split the requested trajectories, validation holding out whole trajectories (never single samples)
+    1 <= tc.n_val_trajs < length(tc.target_trajs) ||
+        error("n_val_trajs = $(tc.n_val_trajs) leaves none of the $(length(tc.target_trajs)) requested trajectories for training!")
+    trajs_train = collect(tc.target_trajs)[1 : end - tc.n_val_trajs]
+    trajs_val   = collect(tc.target_trajs)[end - tc.n_val_trajs + 1 : end]
 
     # Concatenate the sample blocks of each side
-    range_train = reduce(vcat, block.(ics_train); init = Int[])
-    range_val   = reduce(vcat, block.(ics_val);   init = Int[])
+    range_train = reduce(vcat, block.(trajs_train); init = Int[])
+    range_val   = reduce(vcat, block.(trajs_val);   init = Int[])
 
     # Extract training and validation sets
     aw = area_weights(spectral_grid)
@@ -207,15 +207,13 @@ end
 
 
 
-# Samples starting dates uniformly across a year
-function pick_restart_state(restart_scheme, restart_unit, ic, n_ic, restart_ics, restart_js)
-    
-    # Cycle the restart ICs, the caller already passes a shuffled ic
-    restart_ic = restart_ics[mod1(ic, length(restart_ics))]
+# Restart state of start k of n_starts: spread evenly over the list of restarts
+#   - the caller passes a shuffled k, so the order of the start states is random
+#   - a season-major list [(1,1), (2,1), (1,2), ...] alternates the runs and spreads the seasons over the year
+function pick_restart_state(restart_scheme, restart_unit, k, n_starts, restarts)
 
-    # Spread the n_ic training ICs evenly over the available restart seasons
-    j = restart_js[mod1(floor(Int, (ic - 1) * length(restart_js) / n_ic) + 1, length(restart_js))]
+    # Evenly spaced position in the list of restarts
+    run, season = restarts[mod1(floor(Int, (k - 1) * length(restarts) / n_starts) + 1, length(restarts))]
 
-    # Return sampled day
-    return restart_state(restart_scheme, restart_unit, restart_ic, j)
+    return restart_state(restart_scheme, restart_unit, run, season)
 end

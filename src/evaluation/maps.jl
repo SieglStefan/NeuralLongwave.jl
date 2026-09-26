@@ -32,10 +32,6 @@ function color_scale(fields, signed, style; colorrange = nothing)
 end
 
 
-# Cells to highlight: 1 where |value| > threshold, NaN (transparent) elsewhere
-highlight_mask(values, threshold) = [abs(val) > threshold ? 1.0 : NaN for val in values]
-
-
 # Lon/lat matrix of a grid-point vector (npoints), longitudes shifted to [-180, 180]
 function lonlat_matrix(grid_values, grid)
 
@@ -70,7 +66,6 @@ function plot_lonlat(
     label,                  # colorbar label
     title = "",             # figure title
     colorrange = nothing,   # fixed (low, high) color range (nothing = from the data)
-    highlight  = nothing,   # threshold: cells with |value| above it are painted in style.highlight_color
     style = (;),            # entries of lonlat_style() to change
 )
 
@@ -96,10 +91,8 @@ function plot_lonlat(
                    title = titles[i_panel], xgridvisible = false, ygridvisible = false,
                    xticklabelsvisible = style.ticklabels, yticklabelsvisible = style.ticklabels)
 
-        # Plot heatmap, highlighted cells on top, and draw coastline
+        # Plot heatmap and draw coastline
         heatmap_plot = heatmap!(ax, lons, lats, matrix; colorrange, colormap)
-        isnothing(highlight) || heatmap!(ax, lons, lats, highlight_mask(matrix, highlight);
-                                         colormap = [style.highlight_color, style.highlight_color], nan_color = :transparent)
         lines!(ax, GeoMakie.coastlines(); color = :black, linewidth = style.coastline_width)
     end
 
@@ -120,7 +113,6 @@ function plot_zonal(
     label,                  # colorbar label
     title = "",             # figure title
     colorrange = nothing,   # fixed (low, high) color range (nothing = from the data)
-    highlight  = nothing,   # threshold: cells with |value| above it are painted in style.highlight_color
     style = (;),            # entries of zonal_style() to change
 )
 
@@ -145,10 +137,8 @@ function plot_zonal(
         ax = panel(fig, style, i_panel, n_panels; title = titles[i_panel], xlabel = "latitude [°]", ylabel = "layer",
                    xticks = -90:30:90, yticks = layers, yreversed = true)
 
-        # Plot heatmap, highlighted cells on top
+        # Plot heatmap
         heatmap_plot = heatmap!(ax, latd, layers, section; colorrange, colormap)
-        isnothing(highlight) || heatmap!(ax, latd, layers, highlight_mask(section, highlight);
-                                         colormap = [style.highlight_color, style.highlight_color], nan_color = :transparent)
     end
 
     # Add colorbar and title to the figure

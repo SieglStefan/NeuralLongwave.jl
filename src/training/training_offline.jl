@@ -119,7 +119,7 @@ function training_offline(;
         end
 
 
-        # Evaluate on validation set (held-out ics)
+        # Evaluate on validation set (held-out trajectories)
         metrics_val = compute_metrics(
             residuals_offline(emulator.ps, offline_parts(emulator)..., val_set),
             batch_config(tc.loss_config, val_set),

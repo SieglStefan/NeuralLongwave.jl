@@ -15,9 +15,10 @@
 
 ### 1) Raw data generation functions
 
-# Generates raw data (approx. 1 full state every day for sim_days) and stores it as ic_XX.jld2
+# Generates one raw data trajectory (1 full state every sample_hours for sim_days) and stores it as traj_XX.jld2
 function generate_raw_data(;
-    ic_nr,          # initial condition number (used for naming the file)
+    traj,           # trajectory number (used for naming the file)
+    start,          # start state: (run, season) of a restart state, or :default (SW default initial state)
     data_type,      # data type
     dir,            # directory to store the raw data files
     seed,           # seed used for RNG
@@ -27,12 +28,10 @@ function generate_raw_data(;
     lw_scheme,      # used LW parameterization scheme (e.g. OneBandLongwave)
     
     t_spinup,       # spinup time in Days (e.g. Days(10))
-    start_date,     # starting date of the simulation if no restart is provided
+    start_date,     # starting date of the simulation (start = :default only)
 
-    restart_scheme, # scheme used for the restart state
-    restart_unit,   # unit used for the restart state
-    restart_ic,     # specific restart IC
-    restart_j,      # specific restart season
+    restart_scheme, # scheme of the restart states
+    restart_unit,   # unit of the restart states
 
     sample_hours,   # nominal sampling cadence in hours (24 = one state per day)
     phase_shift,    # shift of steps from the nominal cadence (precession through the diurnal cycle)
@@ -51,16 +50,13 @@ function generate_raw_data(;
     sim = initialize!(model_type(spectral_grid; longwave_radiation = lw_scheme))
 
 
-    if isnothing(restart_scheme) || isnothing(restart_unit)
-        # Start from default SW initial condition
+    if start === :default
+        # Start from the default SW initial condition
         clock_start = start_date - t_spinup
         SpeedyWeather.set!(sim.variables.prognostic.clock; time=clock_start, start=clock_start)
     else
-        # Restart IC and season, a vector assigns one per IC and is cycled
-        i = restart_ic isa AbstractVector ? restart_ic[mod1(ic_nr, length(restart_ic))] : restart_ic
-        j = restart_j isa AbstractVector ? restart_j[mod1(ic_nr, length(restart_j))] : restart_j
-
-        restart_from!(sim, restart_state(restart_scheme, restart_unit, i, j), 0)
+        # Start from the restart state (run, season)
+        restart_from!(sim, restart_state(restart_scheme, restart_unit, start...), 0)
     end
 
 
@@ -93,7 +89,7 @@ function generate_raw_data(;
 
 
     # Provide filepath
-    filepath = joinpath(dir, "ic_$(lpad(ic_nr,2,'0')).jld2")
+    filepath = joinpath(dir, traj_file(traj))
 
     # Sample the simulation, one full state per simulated day
     JLD2.jldopen(filepath, "w") do store
@@ -118,7 +114,8 @@ function generate_raw_data(;
 
 
         # Store general information
-        store["ic_nr"]         = ic_nr
+        store["traj"]          = traj
+        store["start"]         = start
         store["data_type"]     = data_type
 
         # Store spectral grid, model and scheme information for rebuilding
@@ -141,7 +138,7 @@ function generate_raw_data(;
 
 
     # Print info message
-    @info "Raw dataset IC $(ic_nr) stored at $(dir)!"
+    @info "Raw data trajectory $(traj) (start $(start)) stored at $(dir)!"
 
     return nothing
 end
@@ -161,7 +158,8 @@ end
 struct RawData{S}
     store::S
 
-    ic_nr::Int
+    traj::Int
+    start::Union{Symbol, Tuple{Int, Int}}
     data_type::Symbol
 
     spectral_grid::SpeedyWeather.SpectralGrid
@@ -183,16 +181,20 @@ end
 Base.getindex(d::RawData, j::Integer) = d.store["s_$(j)"]
 
 
-# Utility wrapper for opening a raw data file and passing it to a function (then closing automatically)
-function with_raw_data(fn, dir::String, ic::Integer)
+# Filename of one raw data trajectory
+traj_file(traj) = "traj_$(lpad(traj,2,'0')).jld2"
+
+# Utility wrapper for opening a raw data trajectory and passing it to a function (then closing automatically)
+function with_raw_data(fn, dir::String, traj::Integer)
 
     # Open data file
-    return JLD2.jldopen(joinpath(dir, "ic_$(lpad(ic,2,'0')).jld2"), "r") do store
+    return JLD2.jldopen(joinpath(dir, traj_file(traj)), "r") do store
 
         # Apply function (provided e.g. by fn: d -> body of a do block)
         fn(RawData{typeof(store)}(
             store, 
-            store["ic_nr"],
+            store["traj"],
+            store["start"],
             store["data_type"],
             store["spectral_grid"],
             store["model_type"],

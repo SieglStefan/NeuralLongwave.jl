@@ -8,10 +8,10 @@
 ###             - target:   sim used as target for gradient computation
 ###             - train:    sim of to be trained LW emulator
 ###     - Prepare logging/saving 
-###     - Shuffle initial conditions (shuffling of starting seasons)
+###     - Shuffle the start states (shuffling of starting seasons)
 ###
-###     - Loop over initial conditions: n_ic
-###         - Sample start date from shuffled initial conditions
+###     - Loop over start states: n_starts
+###         - Pick the restart state of this start
 ###         - Prepare reference simulation sim_ref (copy, perturb and spinup)
 ###
 ###         - Loop over updates: n_updates
@@ -60,14 +60,14 @@ function training_online(;
         emulator, 
         make_zero(emulator.ps))
     )
-    csv_init((:ic, :update, :accum, :n_seg, :eta), metric_keys; dir=tc.dir, file="training.csv")
+    csv_init((:start, :update, :accum, :n_seg, :eta), metric_keys; dir=tc.dir, file="training.csv")
 
     # Initialize folder for training plots
     mkpath(joinpath(tc.dir, "train_plots"))
 
 
-    # Shuffle ics
-    bin_order = randperm(tc.n_ic)
+    # Shuffle the start states
+    start_order = randperm(tc.n_starts)
 
 
     # Print training config
@@ -83,14 +83,14 @@ function training_online(;
 
 
     ### Main training loop
-    ### Loop over initial conditions
-    for ic in 1:tc.n_ic
+    ### Loop over start states
+    for i_start in 1:tc.n_starts
 
         # Update number of steps used for calculating gradients
-        n_seg = tc.n_seg_0 + (ic-1) * tc.n_seg_inc
+        n_seg = tc.n_seg_0 + (i_start-1) * tc.n_seg_inc
 
-        # Draw a starting date
-        restart = pick_restart_state(tc.restart_scheme, tc.restart_unit, bin_order[ic], tc.n_ic, tc.restart_ics, tc.restart_js)
+        # Restart state of this start
+        restart = pick_restart_state(tc.restart_scheme, tc.restart_unit, start_order[i_start], tc.n_starts, tc.restarts)
     
         # Prepare reference simulation (perturbation and spinup)
         sim_ref = prepare_reference(sims.template, tc, n_seg, restart)
@@ -101,7 +101,7 @@ function training_online(;
         for update in 1:tc.n_updates
 
             # Print information of starting first training update step
-            if ic == 1 && update == 1
+            if i_start == 1 && update == 1
                 @info "Start 1st training step!"
             end
 
@@ -125,7 +125,7 @@ function training_online(;
                 grads = compute_gradients(tc, sims, vars0, n_seg)
 
                 # Fail loudly: one NaN gradient turns every parameter into NaN permanently
-                isfinite(tree_l2norm(grads)) || error("non-finite gradient at ic $(ic), update $(update), accum $(accum)")
+                isfinite(tree_l2norm(grads)) || error("non-finite gradient at start $(i_start), update $(update), accum $(accum)")
 
 
                 # Accumulate gradients over accumulation window
@@ -139,7 +139,7 @@ function training_online(;
                     emulator,
                     grads
                 )
-                csv_row!((; ic, update, accum, n_seg, eta); metrics, dir=tc.dir, file="training.csv")
+                csv_row!((; start = i_start, update, accum, n_seg, eta); metrics, dir=tc.dir, file="training.csv")
 
 
                 # Propagate reference trajectory forward
@@ -160,12 +160,12 @@ function training_online(;
         end
 
 
-        # Update learning rate after every ic and update optimiser
+        # Update learning rate after every start state and update optimiser
         eta *= tc.eta_decay
         Optimisers.adjust!(opt_state, eta)
 
 
-        @info "Initial condition $(ic) / $(tc.n_ic) finished!"
+        @info "Start state $(i_start) / $(tc.n_starts) finished!"
     end
 
     # Log info

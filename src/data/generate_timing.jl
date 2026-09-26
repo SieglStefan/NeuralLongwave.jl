@@ -32,7 +32,7 @@ function generate_timing(;
     model_type,             # SW model (e.g. PrimitiveWetModel)
     restart_scheme,         # scheme folder of the restart state all schemes start from
     restart_unit,           # specific restart unit within the restart folder
-    restart,                # (restart IC, state) all schemes start from
+    restart,                # (run, season) restart state all schemes start from
     n_warmup,               # untimed calls per scheme before timing (compilation+caches)
     n_sweep_rounds,         # timed sweeps per scheme (default 1000)
     n_step_rounds,          # timed full steps per scheme (default 200)

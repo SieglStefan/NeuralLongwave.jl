@@ -72,24 +72,24 @@ function print_config(tc::TrainConfigOnline, dt_sec)
     # Single time step in days
     dt_day = dt_sec /3600 /24
 
-    # Gradients per ic and total updates
-    up_total = tc.n_ic * tc.n_updates
+    # Gradients per start state and total updates
+    up_total = tc.n_starts * tc.n_updates
 
-    # Length of one gradient segment, first and last ic
+    # Length of one gradient segment, first and last start state
     t_seg_start = tc.n_seg_0 * dt_day
-    t_seg_end   = (tc.n_seg_0 + tc.n_seg_inc * (tc.n_ic - 1)) * dt_day
+    t_seg_end   = (tc.n_seg_0 + tc.n_seg_inc * (tc.n_starts - 1)) * dt_day
 
-    # Simulated time per ic
-    t_ic_start = tc.n_updates * tc.n_accum * (t_seg_start + tc.n_gap * dt_day)
-    t_ic_end   = tc.n_updates * tc.n_accum * (t_seg_end   + tc.n_gap * dt_day)
+    # Simulated time per start state
+    t_start_first = tc.n_updates * tc.n_accum * (t_seg_start + tc.n_gap * dt_day)
+    t_start_last  = tc.n_updates * tc.n_accum * (t_seg_end   + tc.n_gap * dt_day)
 
     # Print info
     println("----------Online training configuration:----------")
-    println("  - Total updates: ", up_total, "\t(", tc.n_updates, " per ic, ", tc.n_accum, " gradients each)")
-    println("  - Learning rate budget: ", eta_budget(tc.eta0, tc.eta_decay, tc.n_ic, tc.n_updates))
+    println("  - Total updates: ", up_total, "\t(", tc.n_updates, " per start state, ", tc.n_accum, " gradients each)")
+    println("  - Learning rate budget: ", eta_budget(tc.eta0, tc.eta_decay, tc.n_starts, tc.n_updates))
     println("  - Segment length (hours): \t\tStart: ", t_seg_start*24, "\tEnd: ", t_seg_end*24)
-    println("  - Simulated time per ic (days): \tStart: ", t_ic_start,  "\tEnd: ", t_ic_end)
-    println("  - Total simulated time (days): ", tc.n_ic * (t_ic_start + t_ic_end) / 2)
+    println("  - Simulated time per start state (days): \tFirst: ", t_start_first,  "\tLast: ", t_start_last)
+    println("  - Total simulated time (days): ", tc.n_starts * (t_start_first + t_start_last) / 2)
     println("--------------------------------------------------")
 
     return nothing
