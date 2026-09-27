@@ -85,8 +85,6 @@ function rollout_weather(
     horizon_days,       # forecast length in days
     n_starts,           # number of start states PER reference trajectory
     field_days,         # lead days for which entire fields are stored (e.g. for heatmaps)
-    fac_pert_T,         # additive temperature perturbation of every start state (0 = none)
-    seed,               # seed of the perturbation
 )
 
 
@@ -173,17 +171,6 @@ function rollout_weather(
                 restart_from!(sim, state0, 0)
                 copy!(sim.variables, d[s])
 
-                
-                # Optional start perturbation: the same grid noise added to both leapfrog steps
-                #   - not perturb_grid_field!: its initialize! would restart the mid-run state
-                if fac_pert_T > 0
-                    rng = Random.Xoshiro(hash((seed, raw, s)))
-                    noise = fac_pert_T .* randn!(rng, similar(SpeedyWeather.get_step(sim.variables.grid.temperature)))
-                    for step in 1:2
-                        SpeedyWeather.set!(sim; temperature = noise, step, add = true)
-                    end
-                end
-
 
                 # Index counter for stored fields
                 i_field = 0
@@ -245,7 +232,6 @@ function rollout_weather(
     return (;
         # Identity
         leg             = :weather,
-        fac_pert_T      = Float32(fac_pert_T),
         raw_dir         = raw_dir,
         spectral_grid   = meta.spectral_grid,
         probes          = keys(probes),

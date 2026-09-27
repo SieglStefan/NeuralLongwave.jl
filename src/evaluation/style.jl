@@ -131,11 +131,13 @@ weather_cost_style() = merge(base_style(), (;
     fontsize    = 16,
     markersize  = 15,
     errorbars   = true,         # ± SE (RMSE) and 25 - 75 % quantile (runtime)
-    zero_line   = false,        # RMSE axis starts at 0, with a dashed line at RMSE = 0
+    zero_rmse   = true,         # create dashed line at zero rmse
     y_log       = false,        # runtime axis logarithmic (true: 0.5 and 2 equally far from 1)
     trace_color = :black,       # line through a group (nothing = the group's color)
     trace_width = 1.5,
     trace_alpha = 0.5,
+    xlim        = nothing,
+    ylim        = nothing
 ))
 
 
@@ -167,7 +169,7 @@ heatmap_style() = merge(base_style(), (;
 
 # Maps: plot_lonlat
 lonlat_style() = merge(heatmap_style(), (;
-    ncols           = 2,
+    ncols           = 3,
     aspect          = 0.55,             # lon/lat panel plus its title
     ticklabels      = false,            # lon/lat tick labels
     coastline_width = 0.5,
@@ -176,8 +178,8 @@ lonlat_style() = merge(heatmap_style(), (;
 
 # Sections: plot_zonal (plot_weather_zonal, plot_climate_zonal)
 zonal_style() = merge(heatmap_style(), (;
-    textwidth_cm = 20.0,
-    ncols        = 2,
+    textwidth_cm = 30.0,
+    ncols        = 3,
     aspect       = 0.6,
 ))
 
@@ -263,11 +265,30 @@ n_legend_entries(looks, units) = length(unique(unit_names(looks, units)))
 grid_shape(style, n_panels) = (nc = min(style.ncols, n_panels); (nc, cld(n_panels, nc)))
 
 
-# Empty figure for n_panels panels
-function new_figure(style, n_panels; title = "", n_entries = 0)
+# Position (row, column) of every panel and the grid size (columns, rows)
+#   - layout = nothing:     panels filled row by row, style.ncols per row
+#   - layout = 0/1 matrix:  panels fill the 1-cells row by row, e.g. [0 1 0; 1 1 1; 1 1 1]
+function panel_positions(style, n_panels; layout = nothing)
 
-    # Number of columns and rows
-    nc, nr = grid_shape(style, n_panels)
+    # Default: row by row
+    if isnothing(layout)
+        nc, nr = grid_shape(style, n_panels)
+        return [(cld(i_panel, nc), mod1(i_panel, nc)) for i_panel in 1:n_panels], nc, nr
+    end
+
+    # Custom layout: the 1-cells, row by row
+    positions = [(row, col) for row in axes(layout, 1) for col in axes(layout, 2) if layout[row, col] == 1]
+    length(positions) == n_panels || error("layout has $(length(positions)) panels, but there are $(n_panels) to plot")
+
+    return positions, size(layout, 2), size(layout, 1)
+end
+
+
+# Empty figure for n_panels panels
+function new_figure(style, n_panels; title = "", n_entries = 0, shape = grid_shape(style, n_panels))
+
+    # Number of columns and rows (shape = (columns, rows), e.g. from panel_positions)
+    nc, nr = shape
 
     # Width is fixed by page, height follows from the panel aspect ratio
     w = style.width * style.textwidth_cm / 2.54 * 72
@@ -283,13 +304,17 @@ end
 
 
 # Axis of panel i_panel, panels filled row by row (axis_type = GeoMakie.GeoAxis for maps)
-function panel(fig, style, i_panel, n_panels; axis_type = Axis, kwargs...)
+#   - position = (row, column) places the panel explicitly (e.g. from panel_positions)
+function panel(fig, style, i_panel, n_panels; axis_type = Axis, position = nothing, kwargs...)
 
     # Number of columns for the grid of panels
     nc, _ = grid_shape(style, n_panels)
 
+    # Row and column of the panel
+    row, col = isnothing(position) ? (cld(i_panel, nc), mod1(i_panel, nc)) : position
+
     # Return panel
-    return axis_type(fig[cld(i_panel, nc), mod1(i_panel, nc)]; kwargs...)
+    return axis_type(fig[row, col]; kwargs...)
 end
 
 

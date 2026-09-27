@@ -193,6 +193,29 @@ function weather_zonal(rollout, probe, day, metric)
 end
 
 
+# Lon-lat map of a metric at a given lead day: one value per grid point
+#   Order:  - 1) within a trajectory: the metric over the layers of every grid point (layer = nothing) or one layer
+#           - 2) across trajectories: mean
+function weather_lonlat(rollout, probe, day, metric; layer = nothing)
+
+    # Index of the lead day
+    i_day = day_index(rollout.field_days, day)
+
+    # Errors (between run and reference) at the lead day in form (npoints, layer, traj)
+    errors = rollout.field_run[probe][i_day, :, :, :] .- rollout.field_ref[probe][i_day, :, :, :]
+
+    # Layers the metric is taken over (all, or the chosen one)
+    layers = isnothing(layer) ? axes(errors, 2) : (layer:layer)
+
+    # Metric of every grid point and trajectory (npoints, traj)
+    point_scores = [reduce_metric(view(errors, ij, layers, traj), metric)
+                    for ij in axes(errors, 1), traj in axes(errors, 3)]
+
+    # Mean over trajectories (npoints, )
+    return traj_stats(point_scores).mean
+end
+
+
 
 
 
@@ -341,7 +364,8 @@ function plot_weather_zonal(
     probe,                      # probe (a profile, e.g. :T)
     day,                        # lead day (one of the stored field days)
     metric;                     # :rmse, :bias or :maxdiff
-    looks  = nothing,          # labels per unit (panel titles)
+    looks  = nothing,           # labels per unit (panel titles)
+    layout = nothing,           # panel layout, 0/1 matrix e.g. [0 1 0; 1 1 1] (nothing = row by row)
     title  = "",                # figure title
     style  = (;),               # entries of zonal_style() to change
 )
@@ -352,5 +376,30 @@ function plot_weather_zonal(
 
     # Plot heatmaps
     return plot_zonal(sections, latd; titles = unit_names(looks, keys(rollouts)),
-                      signed = metric === :bias, label = axis_label(metric, probe), title, style)
+                      signed = metric === :bias, label = axis_label(metric, probe), title, layout, style)
+end
+
+
+
+# Lon-lat map (per grid point) of one metric at a given lead day, one panel per rollout
+#   - layer = nothing: the metric over the whole column, a number: only that layer
+function plot_weather_lonlat(
+    rollouts,                   # weather rollouts, keyed by unit
+    probe,                      # probe (e.g. :T, :olw)
+    day,                        # lead day (one of the stored field days)
+    metric;                     # :rmse, :bias or :maxdiff
+    layer  = nothing,           # layer of a profile (nothing = whole column)
+    looks  = nothing,           # labels per unit (panel titles)
+    layout = nothing,           # panel layout, 0/1 matrix e.g. [0 1 0; 1 1 1] (nothing = row by row)
+    title  = "",                # figure title
+    style  = (;),               # entries of lonlat_style() to change
+)
+
+    # Compute maps for each rollout
+    maps = [weather_lonlat(rollout, probe, day, metric; layer) for rollout in values(rollouts)]
+    grid = first(values(rollouts)).spectral_grid.grid
+
+    # Plot heatmaps
+    return plot_lonlat(maps, grid; titles = unit_names(looks, keys(rollouts)),
+                       signed = metric === :bias, label = axis_label(metric, probe), title, layout, style)
 end

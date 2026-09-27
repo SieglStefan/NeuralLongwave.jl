@@ -28,7 +28,7 @@ train_base() = (;
     # General
     unit            = "",                       # name of the unit (subfolder of the series)
     seed            = 5000,                     # used seed for rng
-    overwrite       = false,                    # whether an existing output folder is overwritten
+    overwrite       = true,                     # whether an existing output folder is overwritten
 
 
     # Spectral grid

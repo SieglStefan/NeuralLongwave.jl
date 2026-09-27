@@ -81,7 +81,7 @@ function draw_curve!(ax, curve, look, style; n_traj)
     # Vertical line where the first trajectory died (at the window start if it died before)
     i_death = findfirst(<(n_traj), curve.n_valid)
     isnothing(i_death) ||
-            vlines!(ax, [curve.days[i_death]]; color = look.color, linestyle = :dot, linewidth = style.linewidth / 2)
+            vlines!(ax, [curve.days[i_death]]; color = look.color, linestyle = :dash, linewidth = style.linewidth)
 
             
     return nothing

@@ -11,12 +11,12 @@
 #   - x: weather RMSE ± standard error (weather_table)
 #   - y: sweep time relative to the reference, error bar = 25 % - 75 % quantile of the per-round ratios (timing_table)
 #   - marker: black cross on top = a weather trajectory died (weather_table.dead)
-#   - lines: runtime of the reference (dashed, y = 1), RMSE = 0 (dashed, style.zero_line),
-#            RMSE of a reference scheme (dotted, ref_rmse, e.g. the grey OBLW baseline)
+#   - lines: runtime of the reference (dashed, y = 1), RMSE = 0 (dashed, style.zero_rmse),
+#            optional comparison RMSE values (dashed, ref_rmse)
 function plot_weather_cost_plane(
     skill,                                  # weather_table
     timing;                                 # timing_table of the same units
-    ref_rmse = nothing,                     # weather RMSE of a reference scheme (e.g. OBLW/grey), nothing = no line
+    ref_rmse = (;),                         # NamedTuple of comparison weather RMSE, (;) = no line
     looks   = nothing,                      # appearance per unit (group joins units with a thin line)
     xlabel  = "Weather: 14-day RMSE T [K]", 
     ylabel  = "Runtime Emulator / OBLW",
@@ -31,16 +31,19 @@ function plot_weather_cost_plane(
 
     # One panel, runtime on a log axis if set (0.5 and 2 are equally far from 1)
     ax = panel(fig, style, 1, 1; xlabel, ylabel, yscale = style.y_log ? log10 : identity)
+    !isnothing(style.xlim) && xlims!(ax, style.xlim...)
+    !isnothing(style.ylim) && ylims!(ax, style.ylim...)
 
 
     # Reference runtime (OBLW = 1)
     hlines!(ax, [1]; color = :gray, linestyle = :dash, linewidth = style.linewidth / 2)
 
-    # Perfect weather skill (RMSE = 0)
-    style.zero_line && vlines!(ax, [0]; color = :gray, linestyle = :dash, linewidth = style.linewidth / 2)
 
-    # Weather RMSE of a reference scheme
-    isnothing(ref_rmse) || vlines!(ax, [ref_rmse]; color = :black, linestyle = :dot, linewidth = style.linewidth / 2)
+    # Draw vertical reference lines
+    style.zero_rmse && (ref_rmse = merge((; zero = 0.), ref_rmse))
+    for (i,r) in enumerate(keys(ref_rmse))
+        vlines!(ax, [ref_rmse[r]]; color = :gray, linestyle = :dash, linewidth = style.linewidth / 2)
+    end
 
 
     # Collect position, error bars and look of every unit
@@ -85,9 +88,6 @@ function plot_weather_cost_plane(
         # Black cross on top if a weather trajectory died
         p.dead && scatter!(ax, [p.x], [p.y]; color = :black, marker = :xcross, markersize = p.look.markersize)
     end
-
-    # Weather RMSE axis starting at zero
-    style.zero_line && xlims!(ax, 0, nothing)
 
     # Add legend and title to the figure
     add_legend!(fig, ax, style, 1, n_entries)

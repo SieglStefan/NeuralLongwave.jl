@@ -14,7 +14,6 @@
 ###     - OBLW          the target       weather: b_OBLW here (sanity check, RMSE exactly 0), timing reference here
 ###                                      climate: results/OBLW/climate_ref     (targets/OBLW/03_reference.jl)
 ###     - OBLW pert.    climate noise    climate: results/OBLW/climate_noise   (targets/OBLW/03_reference.jl)
-###     - GreyLW        simpler physics  weather + climate: results/OBLW/grey  (targets/OBLW/03_reference.jl)
 ###
 ### Stages, in this order:
 ###     1) training     bash scripts/launch.sh training exp_B 01_NLW_MLP_offline

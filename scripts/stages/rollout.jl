@@ -72,8 +72,6 @@ function stage_rollout(c, job)
         horizon_days = c.weather_horizon_days,
         n_starts     = c.weather_n_starts,
         field_days   = c.weather_field_days,
-        fac_pert_T   = c.weather_fac_pert_T,
-        seed         = c.seed,
     )
 
     # Climate leg, or nothing if it does not run

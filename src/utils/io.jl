@@ -33,7 +33,7 @@ zscore_dir(scheme, unit)            = joinpath(ROOT, "data", "zscore", scheme, u
 emulator_dir(experiment, series, unit)  = joinpath(ROOT, "results", experiment, series, unit, "emulator")       # trained emulators
 rollout_dir(experiment, series, unit)   = joinpath(ROOT, "results", experiment, series, unit, "rollout")        # generated rollouts
 timing_dir(experiment, series)          = joinpath(ROOT, "results", experiment, series, "timing")               # runtime of all units of a series (one job)
-reference_dir(scheme, name)             = joinpath(ROOT, "results", scheme, name)                               # reference runs of a target scheme (climate_ref, climate_noise, grey, spinup, ...)
+reference_dir(scheme, name)             = joinpath(ROOT, "results", scheme, name)                               # reference runs of a target scheme (climate_ref, climate_noise, spinup, ...)
 
 
 

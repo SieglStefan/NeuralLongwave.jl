@@ -1,0 +1,9 @@
+created = 2026-09-26T15:30:51.038Z
+forms = ["LinearOutput", "PlanckOutput"]
+julia = "1.10.10"
+nlayers = 8
+npoints = 3168
+source = "/p/tmp/stefansi/NeuralLongwave.jl/data/raw_data/OBLW/02_offline/01_training_data"
+sw_vers = "0.22.1+DEV"
+trajs = [1, 2, 3, 4]
+truncation = 32

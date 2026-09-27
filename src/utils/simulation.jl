@@ -65,7 +65,6 @@ function perturb_grid_field!(
 end
 
 
-
 # Propagate a simulation for n_steps
 function sim_timesteps!(sim, n_steps)
 

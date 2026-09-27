@@ -110,7 +110,7 @@ function climate_drift(rollout, ref, probe; smooth_days = 366)
 
 
     # No smoothing requested: statistics of the raw bias
-    window > 1 || return (; days, traj_stats(column_bias)...)
+    window == 0 && return (; days, traj_stats(column_bias)...)
 
 
     # Smooth every trajectory separately with a running mean
@@ -261,6 +261,7 @@ function plot_climate_zonal(
     probe;                  # probe (a profile, e.g. :T)
     years  = 2:3,           # averaged years (e.g. 3 or 2:10)
     looks  = nothing,       # labels per unit (panel titles)
+    layout = nothing,       # panel layout, 0/1 matrix e.g. [0 1 0; 1 1 1; 1 1 1] (nothing = row by row)
     title  = "",            # figure title
     style  = (;),           # entries of zonal_style() to change
 )
@@ -271,7 +272,7 @@ function plot_climate_zonal(
 
     # Plot heatmaps
     return plot_zonal(sections, latd; titles = unit_names(looks, keys(rollouts)),
-                      signed = true, label = axis_label(:bias, probe), title, style)
+                      signed = true, label = axis_label(:bias, probe), title, layout, style)
 end
 
 

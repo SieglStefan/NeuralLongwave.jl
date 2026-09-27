@@ -66,14 +66,15 @@ function plot_lonlat(
     label,                  # colorbar label
     title = "",             # figure title
     colorrange = nothing,   # fixed (low, high) color range (nothing = from the data)
+    layout = nothing,       # panel layout, 0/1 matrix e.g. [0 1 0; 1 1 1] (nothing = row by row, style.ncols)
     style = (;),            # entries of lonlat_style() to change
 )
 
-    # Full style, figure and one color scale for all panels
+    # Full style, panel positions, figure and one color scale for all panels
     style    = checked_merge(lonlat_style(), style)
     n_panels = length(fields)
-    nc, nr   = grid_shape(style, n_panels)
-    fig      = new_figure(style, n_panels; title)
+    positions, nc, nr = panel_positions(style, n_panels; layout)
+    fig      = new_figure(style, n_panels; title, shape = (nc, nr))
 
     # Define colorrange and color
     colorrange, colormap = color_scale(fields, signed, style; colorrange)
@@ -87,7 +88,7 @@ function plot_lonlat(
         lons, lats, matrix = lonlat_matrix(field, grid)
 
         # Define panel
-        ax = panel(fig, style, i_panel, n_panels; axis_type = GeoMakie.GeoAxis, dest = "+proj=longlat",
+        ax = panel(fig, style, i_panel, n_panels; position = positions[i_panel], axis_type = GeoMakie.GeoAxis, dest = "+proj=longlat",
                    title = titles[i_panel], xgridvisible = false, ygridvisible = false,
                    xticklabelsvisible = style.ticklabels, yticklabelsvisible = style.ticklabels)
 
@@ -113,14 +114,15 @@ function plot_zonal(
     label,                  # colorbar label
     title = "",             # figure title
     colorrange = nothing,   # fixed (low, high) color range (nothing = from the data)
+    layout = nothing,       # panel layout, 0/1 matrix e.g. [0 1 0; 1 1 1] (nothing = row by row, style.ncols)
     style = (;),            # entries of zonal_style() to change
 )
 
-    # Full style, figure and one color scale for all panels
+    # Full style, panel positions, figure and one color scale for all panels
     style    = checked_merge(zonal_style(), style)
     n_panels = length(sections)
-    nc, nr   = grid_shape(style, n_panels)
-    fig      = new_figure(style, n_panels; title)
+    positions, nc, nr = panel_positions(style, n_panels; layout)
+    fig      = new_figure(style, n_panels; title, shape = (nc, nr))
 
     # Define colorrange and color
     colorrange, colormap = color_scale(sections, signed, style; colorrange)
@@ -134,7 +136,8 @@ function plot_zonal(
         layers = collect(axes(section, 2))
 
         # Define panel
-        ax = panel(fig, style, i_panel, n_panels; title = titles[i_panel], xlabel = "latitude [°]", ylabel = "layer",
+        ax = panel(fig, style, i_panel, n_panels; position = positions[i_panel],
+                   title = titles[i_panel], xlabel = "latitude [°]", ylabel = "layer",
                    xticks = -90:30:90, yticks = layers, yreversed = true)
 
         # Plot heatmap

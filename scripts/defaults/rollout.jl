@@ -66,10 +66,6 @@ roll_oblw() = (;
     co2                  = 280f0,               # CO2 concentration in ppm
 
 
-    # Grey OneBandLongwave (baseline = :GreyLW only)
-    grey_transmissivity  = 0.6f0,               # constant total transmissivity of the atmosphere (SW default)
-
-
     # Reference raw data and restart states
     weather_raw_scheme   = "OBLW",              # scheme of the weather reference raw data
     climate_restart_scheme = "OBLW",            # scheme of the climate restart states
@@ -116,7 +112,6 @@ roll_weather() = (;
     weather_horizon_days = 14,                  # forecast length in days
     weather_n_starts     = 26,                  # number of start states PER reference trajectory
     weather_field_days   = [1, 3, 7, 14],       # lead days for which entire fields are stored
-    weather_fac_pert_T   = 0f0,                 # start state perturbation (additive temperature noise in K)
 )
 
 
